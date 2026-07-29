@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estoque+ · Mini-ERP</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231C2128%22/><text x=%2250%22 y=%2266%22 font-size=%2255%22 text-anchor=%22middle%22 fill=%22%23F5A623%22 font-family=%22sans-serif%22>+</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F6F5F1; --surface:#FFFFFF; --ink:#1C2128; --ink-2:#2B313A;
+    --ink-soft:#5B6572; --muted:#8A93A0; --line:#E5E2D9; --line-2:#DEDBD2;
+    --accent:#F0A020; --accent-ink:#5C3B06;
+    --in:#0F8F63; --in-soft:#E4F6EE;
+    --out:#D9502F; --out-soft:#FCEAE4;
+    --danger:#C4432B; --shadow: 0 1px 2px rgba(28,33,40,.06), 0 8px 24px -12px rgba(28,33,40,.18);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+  .font-display{font-family:'Barlow Semi Condensed',sans-serif}
+  .font-mono{font-family:'JetBrains Mono',monospace}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#D8D4C8;border-radius:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  *:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  a{color:inherit}
+
+  /* ---- Signature element: inventory tag ---- */
+  .tag{
+    position:relative; display:inline-flex; align-items:center; gap:6px;
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600;
+    letter-spacing:.03em; padding:3px 10px 3px 16px; border-radius:3px 8px 8px 3px;
+    white-space:nowrap; line-height:1.6;
+  }
+  .tag::before{
+    content:''; position:absolute; left:6px; top:50%; transform:translateY(-50%);
+    width:5px; height:5px; border-radius:50%; background:currentColor; opacity:.55;
+  }
+  .tag-ok{background:var(--in-soft); color:var(--in)}
+  .tag-warn{background:#FDF1DE; color:#9A6410}
+  .tag-danger{background:var(--out-soft); color:var(--out)}
+  .tag-neutral{background:#EEEDE8; color:var(--ink-soft)}
+
+  .pill-in{background:var(--in-soft); color:var(--in)}
+  .pill-out{background:var(--out-soft); color:var(--out)}
+
+  .btn{font-family:'Inter',sans-serif; font-weight:600; font-size:13px; border-radius:8px; padding:9px 14px; cursor:pointer; border:1px solid transparent; transition:.15s ease; display:inline-flex; align-items:center; gap:6px;}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .btn-primary{background:var(--ink); color:#fff}
+  .btn-primary:hover:not(:disabled){background:var(--ink-2)}
+  .btn-accent{background:var(--accent); color:var(--accent-ink)}
+  .btn-accent:hover:not(:disabled){filter:brightness(.96)}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border-color:var(--line-2)}
+  .btn-ghost:hover:not(:disabled){background:#EFEDE6}
+  .btn-danger{background:var(--out-soft); color:var(--out)}
+  .btn-danger:hover:not(:disabled){background:#F9D8CC}
+  .btn-sm{padding:6px 10px; font-size:12px; border-radius:7px}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  .input{width:100%; background:#fff; border:1px solid var(--line-2); border-radius:8px; padding:9px 11px; font-size:13.5px; color:var(--ink); font-family:'Inter',sans-serif}
+  .input:focus{border-color:var(--ink-soft)}
+  label.field-label{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); display:block; margin-bottom:5px}
+
+  .sidebar-link{display:flex; align-items:center; gap:11px; padding:10px 14px; border-radius:9px; color:#C7CCD4; font-size:13.5px; font-weight:500; cursor:pointer; transition:.12s}
+  .sidebar-link:hover{background:#2A3038; color:#fff}
+  .sidebar-link.active{background:var(--accent); color:var(--accent-ink); font-weight:700}
+
+  table.data-table{width:100%; border-collapse:collapse; font-size:13.5px}
+  table.data-table thead th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; padding:0 14px 10px; border-bottom:1px solid var(--line)}
+  table.data-table tbody td{padding:13px 14px; border-bottom:1px solid var(--line)}
+  table.data-table tbody tr:last-child td{border-bottom:none}
+  table.data-table tbody tr:hover{background:#FBFAF7}
+
+  .modal-backdrop{position:fixed; inset:0; background:rgba(20,22,25,.5); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; z-index:80; padding:16px; animation:fadeIn .15s ease}
+  .modal-box{background:#fff; border-radius:16px; width:100%; max-width:520px; max-height:88vh; overflow:auto; box-shadow:0 30px 60px -20px rgba(0,0,0,.35)}
+  @keyframes fadeIn{from{opacity:0} to{opacity:1}}
+  @keyframes slideUp{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)}}
+  .modal-box{animation:slideUp .18s ease}
+
+  .toast{background:var(--ink); color:#fff; padding:11px 16px; border-radius:9px; font-size:13px; font-weight:500; box-shadow:var(--shadow); display:flex; align-items:center; gap:8px; animation:slideUp .2s ease}
+  .toast.error{background:var(--out)}
+  .toast.success{background:var(--in)}
+
+  .stat-num{font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:32px; letter-spacing:-.01em}
+
+  @media (max-width: 880px){
+    .app-sidebar{position:fixed; left:0; top:0; bottom:0; transform:translateX(-100%); z-index:70; transition:.2s ease}
+    .app-sidebar.open{transform:translateX(0)}
+    .sidebar-overlay{position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:65}
+  }
+  .skeleton{background:linear-gradient(90deg,#EFEDE6 25%,#F6F5F0 37%,#EFEDE6 63%); background-size:400% 100%; animation:sk 1.4s ease infinite}
+  @keyframes sk{0%{background-position:100% 50%} 100%{background-position:0 50%}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="module">
+/* ============================================================================
+   ESTOQUE+ — MINI-ERP DE ESTOQUE E VENDAS
+   Firebase (Auth + Firestore) · Vanilla JS · Single file
+
+   COMO CONFIGURAR (leia com atenção):
+   1. Crie um projeto em https://console.firebase.google.com
+   2. Ative "Authentication" > método "Google"
+   3. Crie um banco "Firestore Database" (modo produção)
+   4. Em "Configurações do projeto" > "Seus apps" > Web, copie o objeto de
+      configuração e cole abaixo em FIREBASE_CONFIG.
+   5. Publique as regras de segurança do arquivo firestore.rules (fornecido
+      junto a este projeto) no console do Firestore.
+   6. Abra este arquivo em um navegador (ou publique no Firebase Hosting /
+      qualquer hospedagem estática).
+   7. O primeiro usuário que fizer login com Google vira automaticamente
+      administrador. Os próximos ficam "pendentes" até serem aprovados.
+   ============================================================================ */
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDqvpuwySuPyfGwbdSZL9uBfLNIeZfpw8U",
+  authDomain: "estoque-mais-db870.firebaseapp.com",
+  projectId: "estoque-mais-db870",
+  storageBucket: "estoque-mais-db870.firebasestorage.app",
+  messagingSenderId: "936100700979",
+  appId: "1:936100700979:web:9649e3f6906825ee125446"
+};
+
+const isConfigured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("COLE_AQUI");
+
+const root = document.getElementById('root');
+
+if (!isConfigured) {
+  renderSetupGuide();
+} else {
+  boot();
+}
+
+/* ---------------------------------------------------------------------- */
+/* SETUP GUIDE (shown until FIREBASE_CONFIG is filled in)                 */
+/* ---------------------------------------------------------------------- */
+function renderSetupGuide(){
+  root.innerHTML = `
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div class="card" style="max-width:640px;padding:36px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <div style="width:36px;height:36px;border-radius:9px;background:var(--ink);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Barlow Semi Condensed';font-weight:800;font-size:20px;">+</div>
+        <div class="font-display" style="font-size:22px;font-weight:700;">Estoque+ precisa ser configurado</div>
+      </div>
+      <p style="color:var(--ink-soft);font-size:14px;line-height:1.6;margin-bottom:16px;">
+        Este Mini-ERP usa <b>Firebase</b> (Authentication + Firestore) como banco de dados.
+        Antes de usar, edite o objeto <code class="font-mono" style="background:#F1EFE8;padding:2px 6px;border-radius:5px;">FIREBASE_CONFIG</code> no topo do arquivo <code class="font-mono" style="background:#F1EFE8;padding:2px 6px;border-radius:5px;">index.html</code> com as chaves do seu projeto.
+      </p>
+      <ol style="font-size:13.5px;color:var(--ink);line-height:2;padding-left:20px;">
+        <li>Crie um projeto em <b>console.firebase.google.com</b></li>
+        <li>Ative o login com <b>Google</b> em Authentication → Sign-in method</li>
+        <li>Crie um <b>Firestore Database</b> (modo produção, qualquer região)</li>
+        <li>Em Configurações do projeto → Seus apps → Web, copie a config</li>
+        <li>Cole no topo deste arquivo, salve e recarregue a página</li>
+        <li>Publique as regras do arquivo <b>firestore.rules</b> incluído no projeto</li>
+      </ol>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:16px;">Consulte o <b>README.md</b> incluído para o passo a passo completo, com prints do que preencher em cada tela.</p>
+    </div>
+  </div>`;
+}
+
+/* ---------------------------------------------------------------------- */
+/* APP BOOTSTRAP                                                          */
+/* ---------------------------------------------------------------------- */
+async function boot(){
+  const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js");
+  const authMod = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
+  const fsMod   = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js");
+
+  const app = initializeApp(FIREBASE_CONFIG);
+  const auth = authMod.getAuth(app);
+  const db = fsMod.getFirestore(app);
+  const provider = new authMod.GoogleAuthProvider();
+
+  const F = {
+    doc: fsMod.doc, getDoc: fsMod.getDoc, setDoc: fsMod.setDoc, addDoc: fsMod.addDoc,
+    updateDoc: fsMod.updateDoc, deleteDoc: fsMod.deleteDoc, collection: fsMod.collection,
+    onSnapshot: fsMod.onSnapshot, query: fsMod.query, orderBy: fsMod.orderBy,
+    where: fsMod.where, runTransaction: fsMod.runTransaction, serverTimestamp: fsMod.serverTimestamp,
+    increment: fsMod.increment, limit: fsMod.limit
+  };
+
+  /* ---------------- GLOBAL STATE ---------------- */
+  const S = {
+    user: null,          // firebase auth user
+    profile: null,       // {name,email,photoURL,role,active}
+    products: [],
+    movements: [],
+    users: [],
+    view: 'dashboard',
+    unsub: [],
+    filters: { prodSearch:'', movType:'all', movProduct:'all', repFrom:'', repTo:'' },
+    charts: {},
+  };
+
+  const ROLE_LABEL = { admin:'Administrador', gerente:'Gerente', operador:'Operador', pendente:'Pendente' };
+  const PERMS = {
+    admin:    { viewProducts:true, editProducts:true, deleteProducts:true, registerMov:true, viewReports:true, manageUsers:true },
+    gerente:  { viewProducts:true, editProducts:true, deleteProducts:false, registerMov:true, viewReports:true, manageUsers:false },
+    operador: { viewProducts:true, editProducts:false, deleteProducts:false, registerMov:true, viewReports:false, manageUsers:false },
+    pendente: { viewProducts:false, editProducts:false, deleteProducts:false, registerMov:false, viewReports:false, manageUsers:false },
+  };
+  const can = (perm) => S.profile && PERMS[S.profile.role] && PERMS[S.profile.role][perm];
+
+  /* ---------------- UTILITIES ---------------- */
+  const fmtBRL = (n) => (Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const fmtNum = (n) => (Number(n)||0).toLocaleString('pt-BR');
+  const fmtDate = (ts) => {
+    if(!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  };
+  const fmtDateOnly = (ts) => {
+    if(!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('pt-BR');
+  };
+  const escapeHtml = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const uid = () => Math.random().toString(36).slice(2,10);
+
+  function toast(msg, type='default'){
+    let host = document.getElementById('toast-host');
+    if(!host){
+      host = document.createElement('div');
+      host.id = 'toast-host';
+      host.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:360px;';
+      document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    el.className = 'toast ' + (type==='error'?'error':type==='success'?'success':'');
+    el.style.justifyContent = 'space-between';
+    const span = document.createElement('span'); span.textContent = msg;
+    const close = document.createElement('span');
+    close.textContent = '✕'; close.style.cssText = 'cursor:pointer;opacity:.7;margin-left:10px;';
+    close.onclick = () => el.remove();
+    el.appendChild(span); el.appendChild(close);
+    host.appendChild(el);
+    const duration = type==='error' ? 12000 : 3200;
+    setTimeout(()=>{ if(!el.isConnected) return; el.style.opacity='0'; el.style.transition='.25s'; setTimeout(()=>el.remove(),250); }, duration);
+  }
+
+  function closeModal(){
+    const m = document.getElementById('modal-root');
+    if(m) m.remove();
+  }
+  function openModal(html){
+    closeModal();
+    const wrap = document.createElement('div');
+    wrap.id = 'modal-root';
+    wrap.className = 'modal-backdrop';
+    wrap.innerHTML = `<div class="modal-box">${html}</div>`;
+    wrap.addEventListener('mousedown', (e)=>{ if(e.target === wrap) closeModal(); });
+    document.body.appendChild(wrap);
+  }
+
+  function stockStatus(p){
+    const min = Number(p.minStock)||0;
+    const cur = Number(p.currentStock)||0;
+    if(cur <= 0) return {label:'ESGOTADO', cls:'tag-danger'};
+    if(cur <= min) return {label:'BAIXO', cls:'tag-warn'};
+    return {label:'OK', cls:'tag-ok'};
+  }
+
+  /* ---------------- AUTH FLOW ---------------- */
+  authMod.onAuthStateChanged(auth, async (user) => {
+    S.unsub.forEach(u=>u()); S.unsub = [];
+    if(!user){ S.user=null; S.profile=null; renderLogin(); return; }
+    S.user = user;
+    await ensureUserProfile(user);
+    listenUsers();   // needed to know own profile/role live
+    listenProducts();
+    listenMovements();
+    renderShell();
+  });
+
+  window.__signIn = async () => {
+    try{
+      await authMod.setPersistence(auth, authMod.browserLocalPersistence);
+      await authMod.signInWithPopup(auth, provider);
+    } catch(e){
+      const fallback = ['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
+      if(fallback.includes(e.code)){
+        try{ await authMod.signInWithRedirect(auth, provider); }
+        catch(e2){ toast('Não foi possível entrar: '+ (e2.code||e2.message), 'error'); }
+      } else {
+        toast('Não foi possível entrar: '+ (e.code||e.message), 'error');
+      }
+    }
+  };
+  window.__signOut = async () => { await authMod.signOut(auth); };
+  // Caso o login tenha caído para o fluxo de redirecionamento, captura o resultado ao voltar.
+  // Erros aqui (ex.: domínio não autorizado) ficam visíveis por mais tempo, pois costumam
+  // acontecer silenciosamente e o usuário só percebe "voltando pra tela de login".
+  authMod.getRedirectResult(auth).then((result)=>{
+    if(result && result.user) toast('Login realizado com sucesso.', 'success');
+  }).catch((e)=>{
+    console.error('Erro no login por redirecionamento:', e);
+    const msg = e && e.code === 'auth/unauthorized-domain'
+      ? `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`
+      : 'Não foi possível concluir o login: ' + (e && (e.code||e.message));
+    toast(msg, 'error');
+  });
+
+  async function ensureUserProfile(user){
+    const ref = F.doc(db, 'users', user.uid);
+    const snap = await F.getDoc(ref);
+    if(snap.exists()) return;
+    // decide role: first user ever -> admin
+    const usersSnap = await F.getDoc(F.doc(db,'meta','counters')).catch(()=>null);
+    let isFirst = false;
+    await F.runTransaction(db, async (tx) => {
+      const counterRef = F.doc(db,'meta','counters');
+      const counterSnap = await tx.get(counterRef);
+      const count = counterSnap.exists() ? (counterSnap.data().userCount||0) : 0;
+      isFirst = count === 0;
+      tx.set(counterRef, { userCount: count + 1 }, { merge:true });
+      tx.set(ref, {
+        name: user.displayName || user.email,
+        email: user.email,
+        photoURL: user.photoURL || '',
+        role: isFirst ? 'admin' : 'pendente',
+        active: isFirst,
+        createdAt: F.serverTimestamp(),
+      });
+    });
+    if(isFirst) toast('Bem-vindo! Você é o administrador inicial do sistema.', 'success');
+  }
+
+  /* ---------------- FIRESTORE LISTENERS ---------------- */
+  function listenUsers(){
+    const qUsers = F.query(F.collection(db,'users'), F.orderBy('createdAt','asc'));
+    const un = F.onSnapshot(qUsers, (snap) => {
+      S.users = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      const mine = S.users.find(u => u.id === S.user.uid);
+      S.profile = mine || { role:'pendente', active:false, name:S.user.displayName, email:S.user.email };
+      renderShell();
+    }, (err)=> toast('Erro ao carregar usuários: '+err.message,'error'));
+    S.unsub.push(un);
+  }
+  function listenProducts(){
+    const qP = F.query(F.collection(db,'products'), F.orderBy('name','asc'));
+    const un = F.onSnapshot(qP, (snap) => {
+      S.products = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderShell();
+    }, (err)=> toast('Erro ao carregar produtos: '+err.message,'error'));
+    S.unsub.push(un);
+  }
+  function listenMovements(){
+    const qM = F.query(F.collection(db,'movements'), F.orderBy('createdAt','desc'), F.limit(500));
+    const un = F.onSnapshot(qM, (snap) => {
+      S.movements = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderShell();
+    }, (err)=> toast('Erro ao carregar movimentações: '+err.message,'error'));
+    S.unsub.push(un);
+  }
+
+  /* ---------------- ACTIONS: PRODUCTS ---------------- */
+  window.__openProductModal = (id) => {
+    const p = id ? S.products.find(x=>x.id===id) : null;
+    openModal(`
+      <form id="product-form" style="padding:22px;">
+        <div class="font-display" style="font-size:19px;font-weight:700;margin-bottom:4px;">${p?'Editar produto':'Novo produto'}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;">${p?('SKU '+escapeHtml(p.sku)):'Preencha os dados do item de estoque'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="grid-column:1/-1;">
+            <label class="field-label">Nome do produto</label>
+            <input class="input" name="name" required value="${p?escapeHtml(p.name):''}" placeholder="Ex: Parafuso sextavado M6" />
+          </div>
+          <div>
+            <label class="field-label">SKU / Código</label>
+            <input class="input font-mono" name="sku" required value="${p?escapeHtml(p.sku):''}" placeholder="SKU-0001" />
+          </div>
+          <div>
+            <label class="field-label">Categoria</label>
+            <input class="input" name="category" value="${p?escapeHtml(p.category||''):''}" placeholder="Ferragens" />
+          </div>
+          <div>
+            <label class="field-label">Unidade</label>
+            <input class="input" name="unit" value="${p?escapeHtml(p.unit||'un'):'un'}" placeholder="un / kg / cx" />
+          </div>
+          <div>
+            <label class="field-label">Estoque mínimo</label>
+            <input class="input" name="minStock" type="number" min="0" step="1" value="${p?p.minStock:0}" />
+          </div>
+          <div>
+            <label class="field-label">Preço de custo (R$)</label>
+            <input class="input" name="costPrice" type="number" min="0" step="0.01" value="${p?p.costPrice:0}" />
+          </div>
+          <div>
+            <label class="field-label">Preço de venda (R$)</label>
+            <input class="input" name="salePrice" type="number" min="0" step="0.01" value="${p?p.salePrice:0}" />
+          </div>
+          ${!p ? `<div>
+            <label class="field-label">Estoque inicial</label>
+            <input class="input" name="initialStock" type="number" min="0" step="1" value="0" />
+          </div>` : ''}
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:22px;">
+          <button type="button" class="btn btn-ghost" onclick="closeModalGlobal()">Cancelar</button>
+          <button type="submit" class="btn btn-accent">${p?'Salvar alterações':'Cadastrar produto'}</button>
+        </div>
+      </form>
+    `);
+    window.closeModalGlobal = closeModal;
+    document.getElementById('product-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const data = {
+        name: fd.get('name').trim(),
+        sku: fd.get('sku').trim(),
+        category: fd.get('category').trim(),
+        unit: fd.get('unit').trim() || 'un',
+        minStock: Number(fd.get('minStock'))||0,
+        costPrice: Number(fd.get('costPrice'))||0,
+        salePrice: Number(fd.get('salePrice'))||0,
+        updatedAt: F.serverTimestamp(),
+      };
+      try{
+        if(p){
+          await F.updateDoc(F.doc(db,'products',p.id), data);
+          toast('Produto atualizado.', 'success');
+        } else {
+          data.currentStock = Number(fd.get('initialStock'))||0;
+          data.active = true;
+          data.createdAt = F.serverTimestamp();
+          await F.addDoc(F.collection(db,'products'), data);
+          toast('Produto cadastrado.', 'success');
+        }
+        closeModal();
+      }catch(err){ toast('Erro ao salvar: '+err.message, 'error'); }
+    });
+  };
+
+  window.__deleteProduct = async (id) => {
+    if(!confirm('Excluir este produto? Esta ação não pode ser desfeita.')) return;
+    try{ await F.deleteDoc(F.doc(db,'products',id)); toast('Produto excluído.', 'success'); }
+    catch(err){ toast('Erro ao excluir: '+err.message, 'error'); }
+  };
+
+  /* ---------------- ACTIONS: MOVEMENTS ---------------- */
+  window.__openMovementModal = (type) => {
+    const options = S.products.map(p=>`<option value="${p.id}">${escapeHtml(p.sku)} · ${escapeHtml(p.name)} (estoque: ${fmtNum(p.currentStock)})</option>`).join('');
+    openModal(`
+      <form id="mov-form" style="padding:22px;">
+        <div class="font-display" style="font-size:19px;font-weight:700;margin-bottom:4px;">
+          ${type==='entrada'?'Registrar entrada':'Registrar saída'}
+        </div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;">
+          ${type==='entrada'?'Compra, devolução ou ajuste que aumenta o estoque.':'Venda, perda ou ajuste que reduz o estoque.'}
+        </div>
+        ${S.products.length===0? `<div style="font-size:13px;color:var(--out);">Cadastre ao menos um produto antes de registrar movimentações.</div>` : `
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <label class="field-label">Produto</label>
+            <select class="input" name="productId" required>${options}</select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <label class="field-label">Quantidade</label>
+              <input class="input" name="qty" type="number" min="1" step="1" required value="1" />
+            </div>
+            <div>
+              <label class="field-label">Motivo</label>
+              <select class="input" name="reason">
+                ${type==='entrada'
+                  ? '<option>Compra</option><option>Devolução</option><option>Ajuste de inventário</option>'
+                  : '<option>Venda</option><option>Perda/Avaria</option><option>Ajuste de inventário</option>'}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="field-label">Observação (opcional)</label>
+            <input class="input" name="note" placeholder="Nº do pedido, cliente, nota fiscal..." />
+          </div>
+        </div>`}
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:22px;">
+          <button type="button" class="btn btn-ghost" onclick="closeModalGlobal()">Cancelar</button>
+          ${S.products.length? `<button type="submit" class="btn ${type==='entrada'?'btn-accent':'btn-primary'}">Confirmar ${type}</button>`:''}
+        </div>
+      </form>
+    `);
+    window.closeModalGlobal = closeModal;
+    const form = document.getElementById('mov-form');
+    if(!form) return;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const productId = fd.get('productId');
+      const qty = Math.max(1, Number(fd.get('qty'))||0);
+      const reason = fd.get('reason');
+      const note = (fd.get('note')||'').trim();
+      const prodRef = F.doc(db,'products',productId);
+      try{
+        await F.runTransaction(db, async (tx) => {
+          const snap = await tx.get(prodRef);
+          if(!snap.exists()) throw new Error('Produto não encontrado.');
+          const prod = snap.data();
+          const cur = Number(prod.currentStock)||0;
+          const delta = type==='entrada' ? qty : -qty;
+          const newStock = cur + delta;
+          if(newStock < 0) throw new Error(`Estoque insuficiente (disponível: ${cur}).`);
+          tx.update(prodRef, { currentStock: newStock, updatedAt: F.serverTimestamp() });
+          const movRef = F.doc(F.collection(db,'movements'));
+          tx.set(movRef, {
+            productId, productName: prod.name, sku: prod.sku,
+            type, qty, reason, note,
+            unitCost: Number(prod.costPrice)||0,
+            unitSale: Number(prod.salePrice)||0,
+            totalValue: (type==='entrada' ? (Number(prod.costPrice)||0) : (Number(prod.salePrice)||0)) * qty,
+            userId: S.user.uid, userName: S.profile.name || S.user.displayName,
+            createdAt: F.serverTimestamp(),
+          });
+        });
+        toast(type==='entrada'?'Entrada registrada.':'Saída registrada.', 'success');
+        closeModal();
+      }catch(err){ toast('Erro: '+err.message, 'error'); }
+    });
+  };
+
+  /* ---------------- ACTIONS: USERS ---------------- */
+  window.__setUserRole = async (id, role) => {
+    try{ await F.updateDoc(F.doc(db,'users',id), { role, active: role!=='pendente' }); toast('Permissão atualizada.', 'success'); }
+    catch(err){ toast('Erro: '+err.message, 'error'); }
+  };
+  window.__toggleUserActive = async (id, active) => {
+    try{ await F.updateDoc(F.doc(db,'users',id), { active }); toast(active?'Usuário ativado.':'Usuário desativado.', 'success'); }
+    catch(err){ toast('Erro: '+err.message, 'error'); }
+  };
+
+  /* ---------------- EXPORT CSV ---------------- */
+  window.__exportMovementsCsv = () => {
+    const rows = [['Data','Tipo','SKU','Produto','Quantidade','Motivo','Valor total','Usuário','Observação']];
+    filteredMovements().forEach(m => rows.push([
+      fmtDate(m.createdAt), m.type, m.sku||'', m.productName||'', m.qty, m.reason||'',
+      (m.totalValue||0).toFixed(2), m.userName||'', (m.note||'').replace(/\n/g,' ')
+    ]));
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `movimentacoes_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  };
+
+  /* ---------------- NAV ---------------- */
+  window.__nav = (view) => { S.view = view; renderShell(); };
+  window.__toggleSidebar = () => {
+    const sb = document.querySelector('.app-sidebar');
+    const ov = document.querySelector('.sidebar-overlay');
+    if(sb) sb.classList.toggle('open');
+    if(ov) ov.style.display = sb && sb.classList.contains('open') ? 'block' : 'none';
+  };
+
+  /* ---------------- FILTER HELPERS ---------------- */
+  function filteredProducts(){
+    const q = S.filters.prodSearch.toLowerCase();
+    if(!q) return S.products;
+    return S.products.filter(p => (p.name||'').toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q));
+  }
+  function filteredMovements(){
+    let list = S.movements;
+    if(S.filters.movType!=='all') list = list.filter(m=>m.type===S.filters.movType);
+    if(S.filters.movProduct!=='all') list = list.filter(m=>m.productId===S.filters.movProduct);
+    if(S.filters.repFrom){ const from = new Date(S.filters.repFrom); list = list.filter(m=> m.createdAt && m.createdAt.toDate() >= from); }
+    if(S.filters.repTo){ const to = new Date(S.filters.repTo); to.setHours(23,59,59,999); list = list.filter(m=> m.createdAt && m.createdAt.toDate() <= to); }
+    return list;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* RENDER: LOGIN                                                       */
+  /* ------------------------------------------------------------------ */
+  function renderLogin(){
+    root.innerHTML = `
+    <div style="min-height:100vh;display:grid;grid-template-columns:1fr;place-items:center;padding:20px;">
+      <div style="max-width:400px;width:100%;text-align:center;">
+        <div style="width:52px;height:52px;border-radius:14px;background:var(--ink);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Barlow Semi Condensed';font-weight:800;font-size:28px;margin:0 auto 18px;">+</div>
+        <div class="font-display" style="font-size:30px;font-weight:700;">Estoque+</div>
+        <div style="color:var(--ink-soft);font-size:14px;margin:6px 0 28px;">Controle de estoque, entradas, saídas e relatórios.</div>
+        <button onclick="window.__signIn()" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.4l-6.5-5.3C29.4 35.4 26.9 36 24 36c-5.3 0-9.8-3.4-11.3-8.1l-6.5 5C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.5 5.3C39.9 37 44 31.4 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+          Entrar com Google
+        </button>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:18px;">Ao entrar, sua conta fica pendente de aprovação por um administrador.</div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* RENDER: SHELL (sidebar + topbar + view)                             */
+  /* ------------------------------------------------------------------ */
+  function renderShell(){
+    if(!S.user) { renderLogin(); return; }
+    if(!S.profile){
+      root.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);">Carregando...</div>`;
+      return;
+    }
+    if(S.profile.role==='pendente' || S.profile.active===false){
+      root.innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div class="card" style="max-width:420px;padding:32px;text-align:center;">
+          <div class="tag tag-warn" style="margin-bottom:14px;">AGUARDANDO APROVAÇÃO</div>
+          <div class="font-display" style="font-size:20px;font-weight:700;margin-bottom:8px;">Sua conta ainda não foi liberada</div>
+          <p style="color:var(--ink-soft);font-size:13.5px;line-height:1.6;">Olá, ${escapeHtml(S.profile.name||'')}. Um administrador precisa definir seu nível de permissão antes que você possa acessar o sistema.</p>
+          <button onclick="window.__signOut()" class="btn btn-ghost" style="margin-top:18px;">Sair</button>
+        </div>
+      </div>`;
+      return;
+    }
+
+    const NAV = [
+      {id:'dashboard', label:'Painel', icon:'▤', show:true},
+      {id:'products', label:'Produtos', icon:'▦', show:can('viewProducts')},
+      {id:'movements', label:'Movimentações', icon:'⇄', show:can('registerMov') || can('viewProducts')},
+      {id:'reports', label:'Relatórios', icon:'▲', show:can('viewReports')},
+      {id:'users', label:'Usuários', icon:'◐', show:can('manageUsers')},
+    ];
+
+    root.innerHTML = `
+    <div style="display:flex;min-height:100vh;">
+      <div class="sidebar-overlay" style="display:none;" onclick="window.__toggleSidebar()"></div>
+      <aside class="app-sidebar" style="width:230px;background:var(--ink);padding:18px 12px;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 8px 22px;">
+          <div style="width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-family:'Barlow Semi Condensed';font-weight:800;font-size:17px;">+</div>
+          <div class="font-display" style="color:#fff;font-size:18px;font-weight:700;">Estoque+</div>
+        </div>
+        <nav style="display:flex;flex-direction:column;gap:3px;flex:1;">
+          ${NAV.filter(n=>n.show).map(n=>`
+            <div class="sidebar-link ${S.view===n.id?'active':''}" onclick="window.__nav('${n.id}')">
+              <span style="width:16px;text-align:center;">${n.icon}</span>${n.label}
+            </div>`).join('')}
+        </nav>
+        <div style="border-top:1px solid #333A44;padding-top:12px;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:9px;padding:6px 8px;">
+            ${S.profile.photoURL?`<img src="${S.profile.photoURL}" style="width:30px;height:30px;border-radius:50%;">`:`<div style="width:30px;height:30px;border-radius:50%;background:#3A414C;"></div>`}
+            <div style="min-width:0;">
+              <div style="color:#fff;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(S.profile.name||'')}</div>
+              <div style="color:#8B93A0;font-size:11px;">${ROLE_LABEL[S.profile.role]}</div>
+            </div>
+          </div>
+          <button onclick="window.__signOut()" class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;background:#2A3038;color:#C7CCD4;border-color:#3A414C;">Sair</button>
+        </div>
+      </aside>
+
+      <main style="flex:1;min-width:0;">
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:10;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button onclick="window.__toggleSidebar()" class="btn btn-ghost btn-sm" style="display:none;" id="menu-btn">☰</button>
+            <div class="font-display" style="font-size:19px;font-weight:700;">${viewTitle(S.view)}</div>
+          </div>
+          <div style="display:flex;gap:8px;">${headerActions(S.view)}</div>
+        </header>
+        <div style="padding:24px;max-width:1280px;">
+          ${renderView(S.view)}
+        </div>
+      </main>
+    </div>
+    <style>
+      @media (max-width:880px){ #menu-btn{display:inline-flex !important;} }
+    </style>
+    `;
+    afterRenderHooks();
+  }
+
+  function viewTitle(v){
+    return {dashboard:'Painel geral', products:'Produtos', movements:'Movimentações de estoque', reports:'Relatórios', users:'Usuários e permissões'}[v] || '';
+  }
+  function headerActions(v){
+    if(v==='products' && can('editProducts')) return `<button class="btn btn-accent btn-sm" onclick="window.__openProductModal()">+ Novo produto</button>`;
+    if(v==='movements' && can('registerMov')) return `
+      <button class="btn btn-ghost btn-sm" style="border-color:var(--in);color:var(--in);" onclick="window.__openMovementModal('entrada')">↓ Entrada</button>
+      <button class="btn btn-ghost btn-sm" style="border-color:var(--out);color:var(--out);" onclick="window.__openMovementModal('saida')">↑ Saída</button>`;
+    if(v==='reports') return `<button class="btn btn-ghost btn-sm" onclick="window.__exportMovementsCsv()">Exportar CSV</button>`;
+    return '';
+  }
+
+  function renderView(v){
+    if(v==='products') return renderProducts();
+    if(v==='movements') return renderMovements();
+    if(v==='reports') return renderReports();
+    if(v==='users') return renderUsers();
+    return renderDashboard();
+  }
+
+  /* ---------------- VIEW: DASHBOARD ---------------- */
+  function renderDashboard(){
+    const totalProducts = S.products.length;
+    const stockValue = S.products.reduce((s,p)=> s + (Number(p.currentStock)||0) * (Number(p.costPrice)||0), 0);
+    const lowStock = S.products.filter(p => (Number(p.currentStock)||0) <= (Number(p.minStock)||0));
+    const today = new Date(); today.setHours(0,0,0,0);
+    const movToday = S.movements.filter(m => m.createdAt && m.createdAt.toDate() >= today);
+
+    return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;">
+      ${statCard('Produtos cadastrados', fmtNum(totalProducts), 'Itens ativos no catálogo')}
+      ${statCard('Valor em estoque', fmtBRL(stockValue), 'Baseado no custo unitário')}
+      ${statCard('Itens em estoque baixo', fmtNum(lowStock.length), lowStock.length? 'Requer atenção' : 'Tudo sob controle', lowStock.length?'var(--out)':'var(--in)')}
+      ${statCard('Movimentações hoje', fmtNum(movToday.length), 'Entradas e saídas')}
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;" id="dash-charts-grid">
+      <div class="card" style="padding:20px;">
+        <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:2px;">Movimentações — últimos 14 dias</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Entradas x Saídas por dia</div>
+        <canvas id="chart-movs" height="130"></canvas>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:2px;">Estoque por categoria</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Quantidade total por categoria</div>
+        <canvas id="chart-cat" height="130"></canvas>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;padding:0;">
+      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);">
+        <div class="font-display" style="font-weight:700;font-size:15px;">Alertas de estoque baixo</div>
+        <span class="tag tag-neutral">${lowStock.length} item(ns)</span>
+      </div>
+      ${lowStock.length===0 ? emptyState('Nenhum alerta no momento', 'Todos os produtos estão acima do estoque mínimo definido.') : `
+      <table class="data-table">
+        <thead><tr><th>SKU</th><th>Produto</th><th>Estoque atual</th><th>Mínimo</th><th>Status</th></tr></thead>
+        <tbody>
+          ${lowStock.slice(0,8).map(p=>{
+            const st = stockStatus(p);
+            return `<tr><td class="font-mono">${escapeHtml(p.sku)}</td><td>${escapeHtml(p.name)}</td><td class="font-mono">${fmtNum(p.currentStock)} ${escapeHtml(p.unit||'un')}</td><td class="font-mono">${fmtNum(p.minStock)}</td><td><span class="tag ${st.cls}">${st.label}</span></td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>`;
+  }
+  function statCard(label, value, sub, color){
+    return `<div class="card" style="padding:16px 18px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;">${label}</div>
+      <div class="stat-num" style="${color?`color:${color}`:''}">${value}</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">${sub}</div>
+    </div>`;
+  }
+  function emptyState(title, sub){
+    return `<div style="padding:40px 20px;text-align:center;">
+      <div style="font-weight:700;font-size:14px;">${title}</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:4px;">${sub}</div>
+    </div>`;
+  }
+
+  /* ---------------- VIEW: PRODUCTS ---------------- */
+  function renderProducts(){
+    const list = filteredProducts();
+    return `
+    <div class="card" style="padding:0;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;">
+        <input class="input" id="prod-search" placeholder="Buscar por nome, SKU ou categoria..." style="max-width:340px;" value="${escapeHtml(S.filters.prodSearch)}" />
+      </div>
+      ${list.length===0 ? emptyState('Nenhum produto encontrado', can('editProducts') ? 'Cadastre seu primeiro produto usando o botão "Novo produto".' : 'Ainda não há produtos cadastrados.') : `
+      <table class="data-table">
+        <thead><tr><th>SKU</th><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Custo</th><th>Venda</th><th>Status</th>${can('editProducts')?'<th></th>':''}</tr></thead>
+        <tbody>
+          ${list.map(p=>{
+            const st = stockStatus(p);
+            return `<tr>
+              <td class="font-mono">${escapeHtml(p.sku)}</td>
+              <td style="font-weight:600;">${escapeHtml(p.name)}</td>
+              <td>${escapeHtml(p.category||'—')}</td>
+              <td class="font-mono">${fmtNum(p.currentStock)} ${escapeHtml(p.unit||'un')}</td>
+              <td class="font-mono">${fmtBRL(p.costPrice)}</td>
+              <td class="font-mono">${fmtBRL(p.salePrice)}</td>
+              <td><span class="tag ${st.cls}">${st.label}</span></td>
+              ${can('editProducts') ? `<td style="text-align:right;white-space:nowrap;">
+                <button class="btn btn-ghost btn-sm" onclick="window.__openProductModal('${p.id}')">Editar</button>
+                ${can('deleteProducts')?`<button class="btn btn-danger btn-sm" onclick="window.__deleteProduct('${p.id}')">Excluir</button>`:''}
+              </td>`:''}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>`;
+  }
+
+  /* ---------------- VIEW: MOVEMENTS ---------------- */
+  function renderMovements(){
+    const list = filteredMovements();
+    const prodOptions = S.products.map(p=>`<option value="${p.id}" ${S.filters.movProduct===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+    return `
+    <div class="card" style="padding:0;">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;">
+        <select class="input" id="mov-type-filter" style="max-width:160px;">
+          <option value="all" ${S.filters.movType==='all'?'selected':''}>Todos os tipos</option>
+          <option value="entrada" ${S.filters.movType==='entrada'?'selected':''}>Entradas</option>
+          <option value="saida" ${S.filters.movType==='saida'?'selected':''}>Saídas</option>
+        </select>
+        <select class="input" id="mov-product-filter" style="max-width:240px;">
+          <option value="all">Todos os produtos</option>${prodOptions}
+        </select>
+      </div>
+      ${list.length===0 ? emptyState('Nenhuma movimentação registrada', can('registerMov') ? 'Use os botões "Entrada" ou "Saída" no topo da página.' : 'Ainda não há movimentações.') : `
+      <table class="data-table">
+        <thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th>Qtd.</th><th>Motivo</th><th>Valor</th><th>Usuário</th></tr></thead>
+        <tbody>
+          ${list.slice(0,200).map(m=>`
+            <tr>
+              <td class="font-mono" style="white-space:nowrap;">${fmtDate(m.createdAt)}</td>
+              <td><span class="tag ${m.type==='entrada'?'pill-in':'pill-out'}">${m.type==='entrada'?'↓ ENTRADA':'↑ SAÍDA'}</span></td>
+              <td style="font-weight:600;">${escapeHtml(m.productName||'')}</td>
+              <td class="font-mono">${m.type==='entrada'?'+':'-'}${fmtNum(m.qty)}</td>
+              <td>${escapeHtml(m.reason||'—')}</td>
+              <td class="font-mono">${fmtBRL(m.totalValue)}</td>
+              <td>${escapeHtml(m.userName||'—')}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`}
+    </div>`;
+  }
+
+  /* ---------------- VIEW: REPORTS ---------------- */
+  function renderReports(){
+    const list = filteredMovements();
+    const entradas = list.filter(m=>m.type==='entrada');
+    const saidas = list.filter(m=>m.type==='saida');
+    const totalEntradaVal = entradas.reduce((s,m)=>s+(m.totalValue||0),0);
+    const totalSaidaVal = saidas.reduce((s,m)=>s+(m.totalValue||0),0);
+
+    const topMap = {};
+    list.forEach(m=>{ topMap[m.productName] = (topMap[m.productName]||0) + m.qty; });
+    const top = Object.entries(topMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+    return `
+    <div class="card" style="padding:16px 18px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:end;">
+      <div>
+        <label class="field-label">De</label>
+        <input class="input" type="date" id="rep-from" value="${S.filters.repFrom}" />
+      </div>
+      <div>
+        <label class="field-label">Até</label>
+        <input class="input" type="date" id="rep-to" value="${S.filters.repTo}" />
+      </div>
+      <button class="btn btn-ghost btn-sm" id="rep-clear">Limpar filtro</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px;">
+      ${statCard('Total entradas', fmtNum(entradas.reduce((s,m)=>s+m.qty,0)), fmtBRL(totalEntradaVal)+' em custo', 'var(--in)')}
+      ${statCard('Total saídas', fmtNum(saidas.reduce((s,m)=>s+m.qty,0)), fmtBRL(totalSaidaVal)+' em vendas', 'var(--out)')}
+      ${statCard('Resultado do período', fmtBRL(totalSaidaVal-totalEntradaVal), 'Vendas − custo de entrada')}
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;">
+      <div class="card" style="padding:20px;">
+        <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:12px;">Entradas x Saídas no período</div>
+        <canvas id="chart-report-line" height="140"></canvas>
+      </div>
+      <div class="card" style="padding:20px;">
+        <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:12px;">Produtos mais movimentados</div>
+        <canvas id="chart-report-top" height="140"></canvas>
+      </div>
+    </div>`;
+  }
+
+  /* ---------------- VIEW: USERS ---------------- */
+  function renderUsers(){
+    return `
+    <div class="card" style="padding:0;">
+      <table class="data-table">
+        <thead><tr><th>Usuário</th><th>E-mail</th><th>Permissão</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          ${S.users.map(u=>`
+            <tr>
+              <td style="display:flex;align-items:center;gap:9px;">
+                ${u.photoURL?`<img src="${u.photoURL}" style="width:26px;height:26px;border-radius:50%;">`:`<div style="width:26px;height:26px;border-radius:50%;background:#EEEDE8;"></div>`}
+                <span style="font-weight:600;">${escapeHtml(u.name||'')}</span>
+              </td>
+              <td style="color:var(--ink-soft);">${escapeHtml(u.email||'')}</td>
+              <td>
+                <select class="input" style="max-width:160px;" onchange="window.__setUserRole('${u.id}', this.value)" ${u.id===S.user.uid?'disabled title="Você não pode alterar sua própria permissão"':''}>
+                  ${['pendente','operador','gerente','admin'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${ROLE_LABEL[r]}</option>`).join('')}
+                </select>
+              </td>
+              <td><span class="tag ${u.active?'tag-ok':'tag-neutral'}">${u.active?'ATIVO':'INATIVO'}</span></td>
+              <td style="text-align:right;">
+                ${u.id!==S.user.uid ? `<button class="btn btn-ghost btn-sm" onclick="window.__toggleUserActive('${u.id}', ${!u.active})">${u.active?'Desativar':'Ativar'}</button>` : `<span style="font-size:11px;color:var(--muted);">você</span>`}
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px;">
+      <b>Operador</b>: registra entradas/saídas e vê produtos. <b>Gerente</b>: também cadastra/edita produtos e vê relatórios. <b>Administrador</b>: acesso total, incluindo gestão de usuários.
+    </p>`;
+  }
+
+  /* ---------------- POST-RENDER HOOKS (bind inputs & charts) ---------------- */
+  function afterRenderHooks(){
+    const search = document.getElementById('prod-search');
+    if(search) search.addEventListener('input', (e)=>{ S.filters.prodSearch = e.target.value; renderShell(); document.getElementById('prod-search').focus(); document.getElementById('prod-search').setSelectionRange(9999,9999); });
+
+    const mt = document.getElementById('mov-type-filter');
+    if(mt) mt.addEventListener('change', (e)=>{ S.filters.movType = e.target.value; renderShell(); });
+    const mp = document.getElementById('mov-product-filter');
+    if(mp) mp.addEventListener('change', (e)=>{ S.filters.movProduct = e.target.value; renderShell(); });
+
+    const rf = document.getElementById('rep-from');
+    if(rf) rf.addEventListener('change', (e)=>{ S.filters.repFrom = e.target.value; renderShell(); });
+    const rt = document.getElementById('rep-to');
+    if(rt) rt.addEventListener('change', (e)=>{ S.filters.repTo = e.target.value; renderShell(); });
+    const rc = document.getElementById('rep-clear');
+    if(rc) rc.addEventListener('click', ()=>{ S.filters.repFrom=''; S.filters.repTo=''; renderShell(); });
+
+    if(S.view==='dashboard') drawDashboardCharts();
+    if(S.view==='reports') drawReportCharts();
+  }
+
+  /* ---------------- CHARTS ---------------- */
+  let chartLibPromise = null;
+  function loadChartLib(){
+    if(window.Chart) return Promise.resolve();
+    if(chartLibPromise) return chartLibPromise;
+    chartLibPromise = new Promise((resolve,reject)=>{
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    return chartLibPromise;
+  }
+  function destroyChart(key){ if(S.charts[key]){ S.charts[key].destroy(); delete S.charts[key]; } }
+
+  async function drawDashboardCharts(){
+    await loadChartLib();
+    const days = [...Array(14)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(13-i)); d.setHours(0,0,0,0); return d; });
+    const labels = days.map(d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+    const ent = days.map(d=> S.movements.filter(m=>m.type==='entrada' && m.createdAt && sameDay(m.createdAt.toDate(),d)).reduce((s,m)=>s+m.qty,0));
+    const sai = days.map(d=> S.movements.filter(m=>m.type==='saida' && m.createdAt && sameDay(m.createdAt.toDate(),d)).reduce((s,m)=>s+m.qty,0));
+
+    const ctx1 = document.getElementById('chart-movs');
+    if(ctx1){
+      destroyChart('movs');
+      S.charts.movs = new Chart(ctx1, { type:'line', data:{ labels, datasets:[
+        {label:'Entradas', data:ent, borderColor:'#0F8F63', backgroundColor:'#0F8F6322', tension:.3, fill:true},
+        {label:'Saídas', data:sai, borderColor:'#D9502F', backgroundColor:'#D9502F22', tension:.3, fill:true},
+      ]}, options: baseChartOpts() });
+    }
+    const catMap = {};
+    S.products.forEach(p=>{ const c = p.category||'Sem categoria'; catMap[c] = (catMap[c]||0) + (Number(p.currentStock)||0); });
+    const ctx2 = document.getElementById('chart-cat');
+    if(ctx2){
+      destroyChart('cat');
+      S.charts.cat = new Chart(ctx2, { type:'bar', data:{ labels:Object.keys(catMap), datasets:[{ label:'Estoque', data:Object.values(catMap), backgroundColor:'#F0A020' }] }, options: baseChartOpts(true) });
+    }
+  }
+  async function drawReportCharts(){
+    await loadChartLib();
+    const list = filteredMovements();
+    const dateKeys = {};
+    list.forEach(m=>{ if(!m.createdAt) return; const k = fmtDateOnly(m.createdAt); dateKeys[k] = dateKeys[k] || {in:0,out:0}; if(m.type==='entrada') dateKeys[k].in += m.qty; else dateKeys[k].out += m.qty; });
+    const labels = Object.keys(dateKeys).slice(-30);
+    const ctx1 = document.getElementById('chart-report-line');
+    if(ctx1){
+      destroyChart('repLine');
+      S.charts.repLine = new Chart(ctx1, { type:'line', data:{ labels, datasets:[
+        {label:'Entradas', data:labels.map(l=>dateKeys[l].in), borderColor:'#0F8F63', tension:.25},
+        {label:'Saídas', data:labels.map(l=>dateKeys[l].out), borderColor:'#D9502F', tension:.25},
+      ]}, options: baseChartOpts() });
+    }
+    const topMap = {};
+    list.forEach(m=>{ topMap[m.productName] = (topMap[m.productName]||0) + m.qty; });
+    const top = Object.entries(topMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const ctx2 = document.getElementById('chart-report-top');
+    if(ctx2){
+      destroyChart('repTop');
+      S.charts.repTop = new Chart(ctx2, { type:'bar', data:{ labels:top.map(t=>t[0]), datasets:[{label:'Unidades movimentadas', data:top.map(t=>t[1]), backgroundColor:'#1C2128'}] }, options: baseChartOpts(true) });
+    }
+  }
+  function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+  function baseChartOpts(indexAxisY){
+    return { responsive:true, maintainAspectRatio:false, indexAxis: indexAxisY? 'y':'x',
+      plugins:{ legend:{ labels:{ font:{ family:'Inter', size:11 } } } },
+      scales:{ x:{ grid:{ display:false } }, y:{ grid:{ color:'#EFEDE6' } } } };
+  }
+
+} // end boot()
+</script>
+</body>
+</html>
