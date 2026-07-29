@@ -123,7 +123,6 @@ const FIREBASE_CONFIG = {
   storageBucket: "estoqueteste-143a6.firebasestorage.app",
   messagingSenderId: "739016859286",
   appId: "1:739016859286:web:10dbf5d6910d58885b2cb7"
-
 };
 
 const isConfigured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("COLE_AQUI");
@@ -308,36 +307,36 @@ async function boot(){
     }
   });
 
+  // Login feito sempre via popup. O fluxo de "signInWithRedirect" foi removido
+  // de propósito: ele depende de sessionStorage compartilhado entre o domínio
+  // do app e o domínio do Firebase (*.firebaseapp.com), e navegadores com
+  // proteção contra rastreamento (Firefox ETP, Safari ITP, Brave) particionam/
+  // bloqueiam esse storage entre domínios diferentes, causando o erro
+  // "missing initial state" de forma imprevisível. O popup não sofre desse
+  // problema, então é a via confiável entre navegadores.
   window.__signIn = async () => {
     try{
       await authMod.setPersistence(auth, authMod.browserLocalPersistence);
       await authMod.signInWithPopup(auth, provider);
     } catch(e){
-      const fallback = ['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
-      if(fallback.includes(e.code)){
-        try{ await authMod.signInWithRedirect(auth, provider); }
-        catch(e2){ toast('Não foi possível entrar: '+ (e2.code||e2.message), 'error'); }
-      } else {
-        toast('Não foi possível entrar: '+ (e.code||e.message), 'error');
+      const blocked = ['auth/popup-blocked','auth/cancelled-popup-request'];
+      const closedByUser = e.code === 'auth/popup-closed-by-user';
+      if(closedByUser){
+        // Usuário fechou o popup por conta própria — não é erro, não precisa de toast.
+        return;
       }
+      let msg;
+      if(blocked.includes(e.code)){
+        msg = 'Seu navegador bloqueou a janela de login. Permita pop-ups para este site (ícone na barra de endereço) e clique em "Entrar" novamente.';
+      } else if(e && e.code === 'auth/unauthorized-domain'){
+        msg = `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`;
+      } else {
+        msg = 'Não foi possível entrar: ' + (e.code||e.message);
+      }
+      toast(msg, 'error');
     }
   };
   window.__signOut = async () => { await authMod.signOut(auth); };
-  // Caso o login tenha caído para o fluxo de redirecionamento, captura o resultado ao voltar.
-  // Erros aqui (ex.: domínio não autorizado) ficam visíveis por mais tempo, pois costumam
-  // acontecer silenciosamente e o usuário só percebe "voltando pra tela de login".
-  authMod.getRedirectResult(auth).then((result)=>{
-    if(result && result.user) toast('Login realizado com sucesso.', 'success');
-  }).catch((e)=>{
-    console.error('Erro no login por redirecionamento:', e);
-    let msg = 'Não foi possível concluir o login: ' + (e && (e.code||e.message));
-    if(e && e.code === 'auth/unauthorized-domain'){
-      msg = `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`;
-    } else if(e && /missing.initial.state/i.test(e.message||'')){
-      msg = 'Seu navegador está bloqueando o login por proteção contra rastreamento (comum no Firefox/Brave/Safari). Desative a proteção contra rastreamento para este site, ou permita pop-ups e tente novamente.';
-    }
-    toast(msg, 'error');
-  });
 
   async function ensureUserProfile(user){
     const ref = F.doc(db, 'users', user.uid);
