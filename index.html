@@ -227,14 +227,20 @@ async function boot(){
     if(!host){
       host = document.createElement('div');
       host.id = 'toast-host';
-      host.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;';
+      host.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:360px;';
       document.body.appendChild(host);
     }
     const el = document.createElement('div');
     el.className = 'toast ' + (type==='error'?'error':type==='success'?'success':'');
-    el.textContent = msg;
+    el.style.justifyContent = 'space-between';
+    const span = document.createElement('span'); span.textContent = msg;
+    const close = document.createElement('span');
+    close.textContent = '✕'; close.style.cssText = 'cursor:pointer;opacity:.7;margin-left:10px;';
+    close.onclick = () => el.remove();
+    el.appendChild(span); el.appendChild(close);
     host.appendChild(el);
-    setTimeout(()=>{ el.style.opacity='0'; el.style.transition='.25s'; setTimeout(()=>el.remove(),250); }, 3200);
+    const duration = type==='error' ? 12000 : 3200;
+    setTimeout(()=>{ if(!el.isConnected) return; el.style.opacity='0'; el.style.transition='.25s'; setTimeout(()=>el.remove(),250); }, duration);
   }
 
   function closeModal(){
@@ -260,19 +266,50 @@ async function boot(){
   }
 
   /* ---------------- AUTH FLOW ---------------- */
+  function renderAuthError(user, err){
+    const code = err && err.code ? err.code : '';
+    let hint = 'Verifique se as regras do Firestore (firestore.rules) foram publicadas corretamente no console do Firebase.';
+    if(code === 'permission-denied' || /permission/i.test(err && err.message || '')){
+      hint = 'O Firestore recusou a gravação do seu perfil (permission-denied). Publique o conteúdo do arquivo <b>firestore.rules</b> em Firestore Database → Regras, no console do Firebase.';
+    } else if(code === 'unavailable'){
+      hint = 'Não foi possível falar com o Firestore agora. Confira sua conexão e tente de novo.';
+    }
+    root.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div class="card" style="max-width:460px;padding:32px;">
+        <div class="tag tag-danger" style="margin-bottom:14px;">FALHA AO PREPARAR SUA CONTA</div>
+        <div class="font-display" style="font-size:19px;font-weight:700;margin-bottom:8px;">Login funcionou, mas algo travou depois</div>
+        <p style="color:var(--ink-soft);font-size:13.5px;line-height:1.6;">${hint}</p>
+        <div style="background:#F6F5F0;border-radius:8px;padding:10px 12px;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ink-soft);word-break:break-word;">
+          ${escapeHtml(code || (err && err.message) || 'erro desconhecido')}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:20px;">
+          <button class="btn btn-accent" onclick="location.reload()">Tentar novamente</button>
+          <button class="btn btn-ghost" onclick="window.__signOut()">Sair</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
   authMod.onAuthStateChanged(auth, async (user) => {
     S.unsub.forEach(u=>u()); S.unsub = [];
     if(!user){ S.user=null; S.profile=null; renderLogin(); return; }
     S.user = user;
-    await ensureUserProfile(user);
-    listenUsers();   // needed to know own profile/role live
-    listenProducts();
-    listenMovements();
-    renderShell();
+    try{
+      await ensureUserProfile(user);
+      listenUsers();   // needed to know own profile/role live
+      listenProducts();
+      listenMovements();
+      renderShell();
+    }catch(err){
+      console.error('Erro ao preparar perfil do usuário:', err);
+      renderAuthError(user, err);
+    }
   });
 
   window.__signIn = async () => {
     try{
+      await authMod.setPersistence(auth, authMod.browserLocalPersistence);
       await authMod.signInWithPopup(auth, provider);
     } catch(e){
       const fallback = ['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
@@ -286,8 +323,16 @@ async function boot(){
   };
   window.__signOut = async () => { await authMod.signOut(auth); };
   // Caso o login tenha caído para o fluxo de redirecionamento, captura o resultado ao voltar.
-  authMod.getRedirectResult(auth).catch((e)=>{
-    if(e && e.code) toast('Não foi possível entrar: '+e.code, 'error');
+  // Erros aqui (ex.: domínio não autorizado) ficam visíveis por mais tempo, pois costumam
+  // acontecer silenciosamente e o usuário só percebe "voltando pra tela de login".
+  authMod.getRedirectResult(auth).then((result)=>{
+    if(result && result.user) toast('Login realizado com sucesso.', 'success');
+  }).catch((e)=>{
+    console.error('Erro no login por redirecionamento:', e);
+    const msg = e && e.code === 'auth/unauthorized-domain'
+      ? `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`
+      : 'Não foi possível concluir o login: ' + (e && (e.code||e.message));
+    toast(msg, 'error');
   });
 
   async function ensureUserProfile(user){
