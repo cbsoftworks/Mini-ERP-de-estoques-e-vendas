@@ -117,12 +117,13 @@
    ============================================================================ */
 
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDqvpuwySuPyfGwbdSZL9uBfLNIeZfpw8U",
-  authDomain: "estoque-mais-db870.firebaseapp.com",
-  projectId: "estoque-mais-db870",
-  storageBucket: "estoque-mais-db870.firebasestorage.app",
-  messagingSenderId: "936100700979",
-  appId: "1:936100700979:web:9649e3f6906825ee125446"
+  apiKey: "AIzaSyAcEx_Ff5_XJfHMaxkfTjpsllvCYYOhcm8",
+  authDomain: "estoqueteste-143a6.firebaseapp.com",
+  projectId: "estoqueteste-143a6",
+  storageBucket: "estoqueteste-143a6.firebasestorage.app",
+  messagingSenderId: "739016859286",
+  appId: "1:739016859286:web:10dbf5d6910d58885b2cb7"
+
 };
 
 const isConfigured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("COLE_AQUI");
@@ -329,9 +330,12 @@ async function boot(){
     if(result && result.user) toast('Login realizado com sucesso.', 'success');
   }).catch((e)=>{
     console.error('Erro no login por redirecionamento:', e);
-    const msg = e && e.code === 'auth/unauthorized-domain'
-      ? `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`
-      : 'Não foi possível concluir o login: ' + (e && (e.code||e.message));
+    let msg = 'Não foi possível concluir o login: ' + (e && (e.code||e.message));
+    if(e && e.code === 'auth/unauthorized-domain'){
+      msg = `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`;
+    } else if(e && /missing.initial.state/i.test(e.message||'')){
+      msg = 'Seu navegador está bloqueando o login por proteção contra rastreamento (comum no Firefox/Brave/Safari). Desative a proteção contra rastreamento para este site, ou permita pop-ups e tente novamente.';
+    }
     toast(msg, 'error');
   });
 
@@ -615,6 +619,7 @@ async function boot(){
           Entrar com Google
         </button>
         <div style="font-size:11.5px;color:var(--muted);margin-top:18px;">Ao entrar, sua conta fica pendente de aprovação por um administrador.</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">Se o login não completar, permita pop-ups para este site ou desative a proteção contra rastreamento do navegador (Firefox/Brave/Safari).</div>
       </div>
     </div>`;
   }
