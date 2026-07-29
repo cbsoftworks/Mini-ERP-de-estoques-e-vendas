@@ -272,10 +272,23 @@ async function boot(){
   });
 
   window.__signIn = async () => {
-    try{ await authMod.signInWithPopup(auth, provider); }
-    catch(e){ toast('Não foi possível entrar: '+ (e.code||e.message), 'error'); }
+    try{
+      await authMod.signInWithPopup(auth, provider);
+    } catch(e){
+      const fallback = ['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
+      if(fallback.includes(e.code)){
+        try{ await authMod.signInWithRedirect(auth, provider); }
+        catch(e2){ toast('Não foi possível entrar: '+ (e2.code||e2.message), 'error'); }
+      } else {
+        toast('Não foi possível entrar: '+ (e.code||e.message), 'error');
+      }
+    }
   };
   window.__signOut = async () => { await authMod.signOut(auth); };
+  // Caso o login tenha caído para o fluxo de redirecionamento, captura o resultado ao voltar.
+  authMod.getRedirectResult(auth).catch((e)=>{
+    if(e && e.code) toast('Não foi possível entrar: '+e.code, 'error');
+  });
 
   async function ensureUserProfile(user){
     const ref = F.doc(db, 'users', user.uid);
