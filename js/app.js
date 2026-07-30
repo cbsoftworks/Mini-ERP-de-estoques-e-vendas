@@ -116,6 +116,18 @@ async function boot(){
     alert: '<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
     box: '<path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    boxCheck: '<path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/><path d="M9 12.5l1.6 1.6L15 10"/>',
+    truck: '<rect x="1" y="6" width="13" height="11" rx="1.2"/><path d="M14 10h4l4 4v3h-8z"/><circle cx="6" cy="19.5" r="1.8"/><circle cx="17.5" cy="19.5" r="1.8"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.4 4 5.6 4 9s-1.4 6.6-4 9c-2.6-2.4-4-5.6-4-9s1.4-6.6 4-9Z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+    clipboardCheck: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 13l2 2 4-4"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M3 10h18"/>',
+    route: '<circle cx="6" cy="6" r="2.3"/><circle cx="18" cy="18" r="2.3"/><path d="M6 8.3V13a4 4 0 0 0 4 4h4"/>',
+    forklift: '<path d="M3 17h4v-8"/><path d="M7 9h3l3 4"/><rect x="13" y="13" width="6" height="4" rx=".8"/><circle cx="8" cy="19.5" r="1.6"/><circle cx="16.5" cy="19.5" r="1.6"/><path d="M3 6v11"/>',
+    key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M16 7l3 3"/><path d="M13 10l2.5 2.5"/>',
+    shield: '<path d="M12 3l7 3v6c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6l7-3Z"/>',
+    lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.5v3"/>',
+    warehouse: '<path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H4a1 1 0 0 1-1-1V10.5Z"/><path d="M9 21v-4h6v4"/>',
   };
   function icon(name, size=16, strokeWidth=2){
     return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`;
@@ -611,19 +623,108 @@ async function boot(){
   /* ------------------------------------------------------------------ */
   function renderLogin(){
     root.innerHTML = `
-    <div style="min-height:100vh;display:grid;grid-template-columns:1fr;place-items:center;padding:20px;">
-      <div style="max-width:400px;width:100%;text-align:center;">
-        <div style="width:52px;height:52px;border-radius:14px;background:var(--ink);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Barlow Semi Condensed';font-weight:800;font-size:28px;margin:0 auto 18px;">+</div>
-        <div class="font-display" style="font-size:30px;font-weight:700;">Estoque+</div>
-        <div style="color:var(--ink-soft);font-size:14px;margin:6px 0 28px;">Controle de estoque, entradas, saídas e relatórios.</div>
-        <button id="btn-google-signin" onclick="window.__signIn()" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;">
-          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.4l-6.5-5.3C29.4 35.4 26.9 36 24 36c-5.3 0-9.8-3.4-11.3-8.1l-6.5 5C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.5 5.3C39.9 37 44 31.4 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
-          Entrar com Google
-        </button>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:18px;">Ao entrar, sua conta fica pendente de aprovação por um administrador.</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px;">Se o login não completar, permita pop-ups para este site ou desative a proteção contra rastreamento do navegador (Firefox/Brave/Safari).</div>
+    <div class="login-wrap">
+      <div class="login-side">
+        <div class="side-glow"></div>
+        <div class="login-brandbar">
+          <div class="login-logo">${icon('warehouse',24,1.8)}</div>
+          <div>
+            <div class="font-display login-brand">Estoque<span>+</span></div>
+            <div class="login-brand-sub">Sistema de gestão de estoque<br>simples, eficiente e inteligente.</div>
+          </div>
+        </div>
+
+        <div class="illu">
+          <div class="illu-shelf">
+            <div class="shelf-bar sb-1"></div>
+            <div class="shelf-bar sb-2"></div>
+            <div class="shelf-bar sb-3"></div>
+            <div class="shelf-leg sl-1"></div>
+            <div class="shelf-leg sl-2"></div>
+            <div class="ibox ib-1">${icon('box',16,1.6)}</div>
+            <div class="ibox ib-2"></div>
+            <div class="ibox ib-3"></div>
+          </div>
+          <div class="illu-board">
+            <div class="board-clip"></div>
+            ${[0,1,2].map(()=>`<div class="board-row"><span class="board-bar"></span><span class="board-check">${icon('check',11,3)}</span></div>`).join('')}
+          </div>
+          <div class="ibox-big">${icon('box',26,1.5)}</div>
+          <div class="float-badge fb-1">${icon('box',18,1.6)}</div>
+          <div class="float-badge fb-2">${icon('reports',18,1.6)}</div>
+        </div>
+
+        <div class="dots-pattern"></div>
       </div>
-    </div>`;
+
+      <div class="login-panel">
+        <div class="login-card">
+          <div class="login-lock">${icon('lock',26,1.8)}</div>
+          <div class="font-display" style="font-size:25px;font-weight:700;text-align:center;color:#fff;">Bem-vindo de volta!</div>
+          <div style="color:#9AA3B0;font-size:13.5px;margin:6px 0 30px;text-align:center;">Entre com sua conta Google para acessar seu painel</div>
+
+          <button id="btn-google-signin" onclick="window.__signIn()" class="btn-enter">
+            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.4l-6.5-5.3C29.4 35.4 26.9 36 24 36c-5.3 0-9.8-3.4-11.3-8.1l-6.5 5C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.5 5.3C39.9 37 44 31.4 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+            Entrar com Google
+          </button>
+
+          <div style="font-size:11.5px;color:#7A8290;margin-top:22px;text-align:center;line-height:1.6;">Ao entrar, sua conta fica pendente de aprovação por um administrador.</div>
+          <div style="font-size:11px;color:#5E6570;margin-top:8px;text-align:center;line-height:1.6;">Se o login não completar, permita pop-ups para este site ou desative a proteção contra rastreamento do navegador.</div>
+
+          <div class="login-foot">© 2026 Estoque+. Todos os direitos reservados.</div>
+        </div>
+      </div>
+    </div>
+    <style>
+      .login-wrap{min-height:100vh;display:grid;grid-template-columns:1.05fr 1fr;background:#0D0F13;}
+
+      /* ---- Lado esquerdo: marca + ilustração ---- */
+      .login-side{position:relative;overflow:hidden;padding:60px;display:flex;flex-direction:column;justify-content:center;}
+      .side-glow{position:absolute;inset:0;background:radial-gradient(ellipse 520px 420px at 22% 60%, rgba(240,160,32,.16), transparent 65%);}
+      .login-brandbar{position:relative;z-index:2;display:flex;align-items:center;gap:16px;margin-bottom:52px;}
+      .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(160deg,#F5C878,var(--accent));color:#3D2A05;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 10px 24px -8px rgba(240,160,32,.55);}
+      .login-brand{font-size:30px;font-weight:800;color:#fff;line-height:1;}
+      .login-brand span{color:var(--accent);}
+      .login-brand-sub{font-size:13.5px;color:#8D95A2;margin-top:8px;line-height:1.5;}
+
+      .illu{position:relative;z-index:2;width:100%;max-width:420px;height:300px;}
+      .illu-shelf{position:absolute;left:0;bottom:10px;width:230px;height:250px;}
+      .shelf-leg{position:absolute;bottom:0;width:6px;height:230px;background:#2A2F38;border-radius:2px;}
+      .sl-1{left:8px;}
+      .sl-2{right:8px;}
+      .shelf-bar{position:absolute;left:8px;right:8px;height:6px;background:#2A2F38;border-radius:2px;}
+      .sb-1{top:6px;} .sb-2{top:96px;} .sb-3{top:186px;}
+      .ibox{position:absolute;border-radius:6px;display:flex;align-items:center;justify-content:center;}
+      .ib-1{left:26px;top:24px;width:64px;height:56px;background:linear-gradient(160deg,#3A4049,#2A2F38);color:#6B7280;border:1px solid #3A4049;}
+      .ib-2{right:20px;top:16px;width:56px;height:64px;background:linear-gradient(160deg,#3A4049,#2A2F38);border:1px solid #3A4049;}
+      .ib-3{left:60px;top:112px;width:70px;height:58px;background:linear-gradient(160deg,#3A4049,#2A2F38);border:1px solid #3A4049;}
+      .ibox-big{position:absolute;left:14px;bottom:6px;width:118px;height:100px;border-radius:8px;background:linear-gradient(160deg,#F5C878 0%,var(--accent) 55%,#C7811A 100%);box-shadow:0 16px 30px -12px rgba(240,160,32,.5);display:flex;align-items:center;justify-content:center;color:rgba(61,42,5,.55);}
+      .illu-board{position:absolute;right:8px;bottom:36px;width:148px;background:#1B1F26;border:1px solid #30363F;border-radius:10px;padding:22px 14px 16px;box-shadow:0 18px 34px -16px rgba(0,0,0,.6);transform:rotate(-2deg);}
+      .board-clip{position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:36px;height:16px;border-radius:5px;background:#454C57;}
+      .board-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;}
+      .board-bar{flex:1;height:6px;border-radius:3px;background:#3A4049;}
+      .board-check{color:var(--accent);flex:none;display:flex;}
+      .float-badge{position:absolute;width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.35);animation:cardFloat 6s ease-in-out infinite;}
+      .fb-1{top:18px;right:56px;animation-delay:.4s;}
+      .fb-2{bottom:18px;right:-6px;animation-delay:1.6s;}
+      @keyframes cardFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+
+      .dots-pattern{position:relative;z-index:2;margin-top:44px;width:120px;height:34px;background-image:radial-gradient(rgba(240,160,32,.55) 1.6px, transparent 1.6px);background-size:14px 14px;opacity:.8;}
+
+      /* ---- Lado direito: card de login ---- */
+      .login-panel{display:flex;align-items:center;justify-content:center;padding:24px;background:#12151A;}
+      .login-card{width:100%;max-width:410px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:40px 38px;box-shadow:0 30px 60px -30px rgba(0,0,0,.7);}
+      .login-lock{width:64px;height:64px;border-radius:16px;background:rgba(240,160,32,.14);border:1px solid rgba(240,160,32,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;}
+      .btn-enter{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;font-size:14.5px;font-weight:700;font-family:'Inter',sans-serif;color:#241804;background:linear-gradient(160deg,#F5C878,var(--accent));border:none;border-radius:10px;cursor:pointer;box-shadow:0 12px 26px -12px rgba(240,160,32,.55);transition:.15s ease;}
+      .btn-enter:hover{filter:brightness(1.06);transform:translateY(-1px);}
+      .btn-enter:active{transform:translateY(0);}
+      .login-foot{margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07);font-size:11.5px;color:#5E6570;text-align:center;}
+
+      @media (max-width:900px){
+        .login-wrap{grid-template-columns:1fr;}
+        .login-side{display:none;}
+      }
+    </style>`;
   }
 
   /* ------------------------------------------------------------------ */
@@ -783,9 +884,10 @@ async function boot(){
     </div>`;
   }
   function statCard(label, value, sub, color, iconName='box'){
-    const c = color || 'var(--ink)';
+    const badgeBg = color === 'var(--out)' ? '#FCEAE4' : color === 'var(--in)' ? '#E4F6EE' : '#F1EFE8';
+    const badgeColor = color || 'var(--ink-soft)';
     return `<div class="card stat-card" style="padding:16px 18px;">
-      <div class="stat-icon-badge" style="background:${c}18;color:${c};">${icon(iconName,17)}</div>
+      <div class="stat-icon-badge" style="background:${badgeBg};color:${badgeColor};">${icon(iconName,17)}</div>
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;">${label}</div>
       <div class="stat-num" style="${color?`color:${color}`:''}">${value}</div>
       <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">${sub}</div>
