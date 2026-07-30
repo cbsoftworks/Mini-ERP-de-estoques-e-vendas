@@ -118,7 +118,11 @@
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAcEx_Ff5_XJfHMaxkfTjpsllvCYYOhcm8",
-  authDomain: "estoqueteste-143a6.firebaseapp.com",
+  // authDomain aponta para o domínio do próprio app (não mais *.firebaseapp.com).
+  // O vercel.json proxia /__/auth/* e /__/firebase/* para o Firebase por trás dos
+  // panos, então o navegador nunca enxerga isso como cross-origin — é isso que
+  // elimina os erros "missing initial state" / popup bloqueado no Firefox.
+  authDomain: "mini-erp-de-estoques-e-vendas.vercel.app",
   projectId: "estoqueteste-143a6",
   storageBucket: "estoqueteste-143a6.firebasestorage.app",
   messagingSenderId: "739016859286",
@@ -308,13 +312,15 @@ async function boot(){
     }
   });
 
-  // Login feito sempre via popup. O fluxo de "signInWithRedirect" foi removido
-  // de propósito: ele depende de sessionStorage compartilhado entre o domínio
-  // do app e o domínio do Firebase (*.firebaseapp.com), e navegadores com
-  // proteção contra rastreamento (Firefox ETP, Safari ITP, Brave) particionam/
-  // bloqueiam esse storage entre domínios diferentes, causando o erro
-  // "missing initial state" de forma imprevisível. O popup não sofre desse
-  // problema, então é a via confiável entre navegadores.
+  // Login: popup como via principal, com fallback para redirect. Agora que o
+  // authDomain é o próprio domínio do app (proxiado via vercel.json), tanto o
+  // popup quanto o redirect deixam de sofrer com bloqueio de storage entre
+  // domínios diferentes — o que causava o "missing initial state" antes.
+  // setPersistence roda uma única vez aqui embaixo (fora do clique) para não
+  // atrasar a chamada de signInWithPopup: um `await` logo antes dela pode
+  // fazer o Firefox descartar o gesto de clique do usuário e bloquear o popup.
+  authMod.setPersistence(auth, authMod.browserLocalPersistence).catch(()=>{});
+
   let signInInFlight = false; // trava contra duplo clique: um 2º popup cancela o 1º e gera erro falso
   window.__signIn = async () => {
     if(signInInFlight) return;
@@ -322,19 +328,19 @@ async function boot(){
     const btn = document.getElementById('btn-google-signin');
     if(btn) btn.disabled = true;
     try{
-      await authMod.setPersistence(auth, authMod.browserLocalPersistence);
       await authMod.signInWithPopup(auth, provider);
     } catch(e){
-      const blocked = ['auth/popup-blocked','auth/cancelled-popup-request'];
-      const closedByUser = e.code === 'auth/popup-closed-by-user';
-      if(closedByUser){
+      const fallback = ['auth/popup-blocked','auth/cancelled-popup-request'];
+      if(e.code === 'auth/popup-closed-by-user'){
         // Usuário fechou o popup por conta própria — não é erro, não precisa de toast.
         return;
       }
+      if(fallback.includes(e.code)){
+        try{ await authMod.signInWithRedirect(auth, provider); return; }
+        catch(e2){ toast('Não foi possível entrar: '+ (e2.code||e2.message), 'error'); return; }
+      }
       let msg;
-      if(blocked.includes(e.code)){
-        msg = 'Seu navegador bloqueou a janela de login. Permita pop-ups para este site (ícone na barra de endereço) e clique em "Entrar" novamente.';
-      } else if(e && e.code === 'auth/unauthorized-domain'){
+      if(e && e.code === 'auth/unauthorized-domain'){
         msg = `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`;
       } else {
         msg = 'Não foi possível entrar: ' + (e.code||e.message);
@@ -346,6 +352,18 @@ async function boot(){
     }
   };
   window.__signOut = async () => { await authMod.signOut(auth); };
+
+  // Captura o resultado quando o login cai no fallback de redirect.
+  authMod.getRedirectResult(auth).then((result)=>{
+    if(result && result.user) toast('Login realizado com sucesso.', 'success');
+  }).catch((e)=>{
+    console.error('Erro no login por redirecionamento:', e);
+    let msg = 'Não foi possível concluir o login: ' + (e && (e.code||e.message));
+    if(e && e.code === 'auth/unauthorized-domain'){
+      msg = `O domínio "${location.hostname}" não está autorizado no Firebase. Adicione em Authentication > Configurações > Domínios autorizados.`;
+    }
+    toast(msg, 'error');
+  });
 
   async function ensureUserProfile(user){
     const ref = F.doc(db, 'users', user.uid);

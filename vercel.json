@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://estoqueteste-143a6.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/__/firebase/:path*",
+      "destination": "https://estoqueteste-143a6.firebaseapp.com/__/firebase/:path*"
+    }
+  ]
+}
