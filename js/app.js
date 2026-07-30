@@ -375,7 +375,7 @@ async function boot(){
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div style="grid-column:1/-1;">
             <label class="field-label">Nome do produto</label>
             <input class="input" name="name" required value="${p?escapeHtml(p.name):''}" placeholder="Ex: Parafuso sextavado M6" />
@@ -506,7 +506,7 @@ async function boot(){
             <label class="field-label">Produto</label>
             <select class="input" name="productId" required>${options}</select>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div>
               <label class="field-label">Quantidade</label>
               <input class="input" name="qty" type="number" min="1" step="1" required value="1" />
@@ -639,19 +639,31 @@ async function boot(){
             <div class="shelf-bar sb-1"></div>
             <div class="shelf-bar sb-2"></div>
             <div class="shelf-bar sb-3"></div>
+            <div class="shelf-bar sb-4"></div>
             <div class="shelf-leg sl-1"></div>
             <div class="shelf-leg sl-2"></div>
-            <div class="ibox ib-1">${icon('box',16,1.6)}</div>
+            <div class="ibox ib-1">${icon('box',20,1.6)}</div>
             <div class="ibox ib-2"></div>
-            <div class="ibox ib-3"></div>
+            <div class="ibox ib-3">${icon('box',16,1.6)}</div>
+            <div class="ibox ib-4"></div>
           </div>
           <div class="illu-board">
             <div class="board-clip"></div>
-            ${[0,1,2].map(()=>`<div class="board-row"><span class="board-bar"></span><span class="board-check">${icon('check',11,3)}</span></div>`).join('')}
+            <div class="board-title">${icon('reports',13,2.2)}<span>Relatório</span></div>
+            ${[0,1,2,3].map(()=>`<div class="board-row"><span class="board-bar"></span><span class="board-check">${icon('check',11,3)}</span></div>`).join('')}
           </div>
-          <div class="ibox-big">${icon('box',26,1.5)}</div>
-          <div class="float-badge fb-1">${icon('box',18,1.6)}</div>
-          <div class="float-badge fb-2">${icon('reports',18,1.6)}</div>
+          <div class="illu-chart">
+            <div class="chart-bar cb-1"></div>
+            <div class="chart-bar cb-2"></div>
+            <div class="chart-bar cb-3"></div>
+            <div class="chart-bar cb-4"></div>
+            <div class="chart-bar cb-5"></div>
+          </div>
+          <div class="ibox-big">${icon('box',34,1.4)}</div>
+          <div class="float-badge fb-1">${icon('box',22,1.6)}</div>
+          <div class="float-badge fb-2">${icon('reports',22,1.6)}</div>
+          <div class="float-badge fb-3">${icon('check',22,2)}</div>
+          <div class="value-pill">${icon('reports',14,2)}<span>+18% este mês</span></div>
         </div>
 
         <div class="dots-pattern"></div>
@@ -676,40 +688,48 @@ async function boot(){
       </div>
     </div>
     <style>
-      .login-wrap{min-height:100vh;display:grid;grid-template-columns:1.05fr 1fr;background:#0D0F13;}
+      .login-wrap{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);background:#0D0F13;}
 
       /* ---- Lado esquerdo: marca + ilustração ---- */
-      .login-side{position:relative;overflow:hidden;padding:60px;display:flex;flex-direction:column;justify-content:center;}
-      .side-glow{position:absolute;inset:0;background:radial-gradient(ellipse 520px 420px at 22% 60%, rgba(240,160,32,.16), transparent 65%);}
-      .login-brandbar{position:relative;z-index:2;display:flex;align-items:center;gap:16px;margin-bottom:52px;}
+      .login-side{position:relative;overflow:hidden;padding:clamp(32px,50vw,72px);display:flex;flex-direction:column;justify-content:center;}
+      .side-glow{position:absolute;inset:0;background:radial-gradient(ellipse 620px 520px at 24% 58%, rgba(240,160,32,.18), transparent 65%);}
+      .login-brandbar{position:relative;z-index:2;display:flex;align-items:center;gap:16px;margin-bottom:clamp(32px,4vw,56px);}
       .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(160deg,#F5C878,var(--accent));color:#3D2A05;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 10px 24px -8px rgba(240,160,32,.55);}
-      .login-brand{font-size:30px;font-weight:800;color:#fff;line-height:1;}
+      .login-brand{font-size:clamp(26px,2.6vw,32px);font-weight:800;color:#fff;line-height:1;}
       .login-brand span{color:var(--accent);}
       .login-brand-sub{font-size:13.5px;color:#8D95A2;margin-top:8px;line-height:1.5;}
 
-      .illu{position:relative;z-index:2;width:100%;max-width:420px;height:300px;}
-      .illu-shelf{position:absolute;left:0;bottom:10px;width:230px;height:250px;}
-      .shelf-leg{position:absolute;bottom:0;width:6px;height:230px;background:#2A2F38;border-radius:2px;}
-      .sl-1{left:8px;}
-      .sl-2{right:8px;}
-      .shelf-bar{position:absolute;left:8px;right:8px;height:6px;background:#2A2F38;border-radius:2px;}
-      .sb-1{top:6px;} .sb-2{top:96px;} .sb-3{top:186px;}
-      .ibox{position:absolute;border-radius:6px;display:flex;align-items:center;justify-content:center;}
-      .ib-1{left:26px;top:24px;width:64px;height:56px;background:linear-gradient(160deg,#3A4049,#2A2F38);color:#6B7280;border:1px solid #3A4049;}
-      .ib-2{right:20px;top:16px;width:56px;height:64px;background:linear-gradient(160deg,#3A4049,#2A2F38);border:1px solid #3A4049;}
-      .ib-3{left:60px;top:112px;width:70px;height:58px;background:linear-gradient(160deg,#3A4049,#2A2F38);border:1px solid #3A4049;}
-      .ibox-big{position:absolute;left:14px;bottom:6px;width:118px;height:100px;border-radius:8px;background:linear-gradient(160deg,#F5C878 0%,var(--accent) 55%,#C7811A 100%);box-shadow:0 16px 30px -12px rgba(240,160,32,.5);display:flex;align-items:center;justify-content:center;color:rgba(61,42,5,.55);}
-      .illu-board{position:absolute;right:8px;bottom:36px;width:148px;background:#1B1F26;border:1px solid #30363F;border-radius:10px;padding:22px 14px 16px;box-shadow:0 18px 34px -16px rgba(0,0,0,.6);transform:rotate(-2deg);}
-      .board-clip{position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:36px;height:16px;border-radius:5px;background:#454C57;}
-      .board-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;}
-      .board-bar{flex:1;height:6px;border-radius:3px;background:#3A4049;}
+      /* Ilustração ampliada: mais elementos, mais espaço, mais profundidade */
+      .illu{position:relative;z-index:2;width:100%;max-width:600px;height:clamp(340px,38vw,460px);margin:0 auto;}
+      .illu-shelf{position:absolute;left:0;bottom:10px;width:min(340px,52%);height:82%;}
+      .shelf-leg{position:absolute;bottom:0;width:8px;height:88%;background:#2A2F38;border-radius:3px;}
+      .sl-1{left:10px;}
+      .sl-2{right:10px;}
+      .shelf-bar{position:absolute;left:10px;right:10px;height:8px;background:#2A2F38;border-radius:3px;}
+      .sb-1{top:2%;} .sb-2{top:34%;} .sb-3{top:66%;} .sb-4{top:98%;}
+      .ibox{position:absolute;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+      .ib-1{left:34px;top:20px;width:92px;height:80px;background:linear-gradient(160deg,#3A4049,#2A2F38);color:#8B93A0;border:1px solid #3A4049;box-shadow:0 10px 20px -10px rgba(0,0,0,.5);}
+      .ib-2{right:26px;top:12px;width:76px;height:92px;background:linear-gradient(160deg,#3A4049,#2A2F38);border:1px solid #3A4049;box-shadow:0 10px 20px -10px rgba(0,0,0,.5);}
+      .ib-3{left:82px;top:158px;width:100px;height:82px;background:linear-gradient(160deg,#3A4049,#2A2F38);color:#8B93A0;border:1px solid #3A4049;box-shadow:0 10px 20px -10px rgba(0,0,0,.5);}
+      .ib-4{right:18px;top:170px;width:60px;height:66px;background:linear-gradient(160deg,#343A43,#262B33);border:1px solid #3A4049;}
+      .ibox-big{position:absolute;left:18px;bottom:6px;width:168px;height:142px;border-radius:12px;background:linear-gradient(160deg,#F5C878 0%,var(--accent) 55%,#C7811A 100%);box-shadow:0 22px 40px -14px rgba(240,160,32,.5);display:flex;align-items:center;justify-content:center;color:rgba(61,42,5,.5);}
+      .illu-board{position:absolute;right:4%;bottom:18%;width:min(210px,32%);background:#1B1F26;border:1px solid #30363F;border-radius:12px;padding:26px 16px 18px;box-shadow:0 22px 42px -18px rgba(0,0,0,.65);transform:rotate(-2deg);}
+      .board-clip{position:absolute;top:-10px;left:50%;transform:translateX(-50%);width:40px;height:18px;border-radius:6px;background:#454C57;}
+      .board-title{display:flex;align-items:center;gap:6px;color:var(--accent);font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:13px;margin-bottom:14px;letter-spacing:.02em;}
+      .board-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:13px;}
+      .board-bar{flex:1;height:7px;border-radius:3px;background:#3A4049;}
       .board-check{color:var(--accent);flex:none;display:flex;}
-      .float-badge{position:absolute;width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.35);animation:cardFloat 6s ease-in-out infinite;}
-      .fb-1{top:18px;right:56px;animation-delay:.4s;}
-      .fb-2{bottom:18px;right:-6px;animation-delay:1.6s;}
-      @keyframes cardFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+      .illu-chart{position:absolute;left:6%;top:4%;width:150px;height:74px;background:#1B1F26;border:1px solid #30363F;border-radius:12px;display:flex;align-items:flex-end;gap:9px;padding:14px 16px;box-shadow:0 18px 36px -18px rgba(0,0,0,.6);}
+      .chart-bar{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--accent),#C7811A);}
+      .cb-1{height:35%;opacity:.55;} .cb-2{height:55%;opacity:.7;} .cb-3{height:40%;opacity:.6;} .cb-4{height:80%;} .cb-5{height:100%;}
+      .float-badge{position:absolute;width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);animation:cardFloat 6s ease-in-out infinite;backdrop-filter:blur(2px);}
+      .fb-1{top:16%;right:22%;animation-delay:.4s;}
+      .fb-2{bottom:14%;right:-2%;animation-delay:1.6s;}
+      .fb-3{top:44%;left:-2%;animation-delay:2.6s;}
+      @keyframes cardFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+      .value-pill{position:absolute;left:6%;bottom:-2%;display:flex;align-items:center;gap:7px;background:rgba(15,143,99,.14);border:1px solid rgba(15,143,99,.4);color:#4FD69C;font-size:12px;font-weight:700;padding:8px 14px;border-radius:999px;box-shadow:0 14px 26px -14px rgba(0,0,0,.5);}
 
-      .dots-pattern{position:relative;z-index:2;margin-top:44px;width:120px;height:34px;background-image:radial-gradient(rgba(240,160,32,.55) 1.6px, transparent 1.6px);background-size:14px 14px;opacity:.8;}
+      .dots-pattern{position:relative;z-index:2;margin-top:clamp(28px,4vw,48px);width:120px;height:34px;background-image:radial-gradient(rgba(240,160,32,.55) 1.6px, transparent 1.6px);background-size:14px 14px;opacity:.8;}
 
       /* ---- Lado direito: card de login ---- */
       .login-panel{display:flex;align-items:center;justify-content:center;padding:24px;background:#12151A;}
@@ -720,9 +740,18 @@ async function boot(){
       .btn-enter:active{transform:translateY(0);}
       .login-foot{margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07);font-size:11.5px;color:#5E6570;text-align:center;}
 
+      /* ---- Responsividade: telas médias mantêm ilustração menor, telas pequenas escondem ---- */
+      @media (max-width:1150px){
+        .illu{max-width:460px;}
+        .ib-1,.ib-2,.ib-3{display:none;}
+      }
       @media (max-width:900px){
         .login-wrap{grid-template-columns:1fr;}
         .login-side{display:none;}
+      }
+      @media (max-width:420px){
+        .login-panel{padding:14px;}
+        .login-card{padding:30px 22px;border-radius:16px;}
       }
     </style>`;
   }
@@ -784,23 +813,31 @@ async function boot(){
       </aside>
 
       <main style="flex:1;min-width:0;">
-        <header style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:10;">
-          <div style="display:flex;align-items:center;gap:10px;">
+        <header class="app-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:10;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
             <button onclick="window.__toggleSidebar()" class="btn btn-ghost btn-sm" style="display:none;" id="menu-btn">☰</button>
-            <div>
+            <div style="min-width:0;">
               <div class="font-display" style="font-size:19px;font-weight:700;line-height:1.2;">${viewTitle(S.view)}</div>
               <div class="view-subtitle">${viewSubtitle(S.view)}</div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;">${headerActions(S.view)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">${headerActions(S.view)}</div>
         </header>
-        <div style="padding:24px;max-width:1280px;">
+        <div class="app-main-pad" style="padding:24px;max-width:1280px;">
           ${renderView(S.view)}
         </div>
       </main>
     </div>
     <style>
       @media (max-width:880px){ #menu-btn{display:inline-flex !important;} }
+      @media (max-width:640px){
+        .app-header{padding:12px 16px !important;}
+        .app-main-pad{padding:16px !important;}
+      }
+      @media (max-width:420px){
+        .app-header{padding:10px 12px !important;}
+        .app-main-pad{padding:12px !important;}
+      }
     </style>
     `;
     afterRenderHooks();
@@ -850,7 +887,7 @@ async function boot(){
       ${statCard('Itens em estoque baixo', fmtNum(lowStock.length), lowStock.length? 'Requer atenção' : 'Tudo sob controle', lowStock.length?'var(--out)':'var(--in)', 'alert')}
       ${statCard('Movimentações hoje', fmtNum(movToday.length), 'Entradas e saídas', null, 'movements')}
     </div>
-    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;" id="dash-charts-grid">
+    <div class="charts-grid-2" style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;" id="dash-charts-grid">
       <div class="card card-hoverable" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:2px;">Movimentações — últimos 14 dias</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Entradas x Saídas por dia</div>
@@ -872,7 +909,7 @@ async function boot(){
         <span class="tag tag-neutral">${lowStock.length} item(ns)</span>
       </div>
       ${lowStock.length===0 ? emptyState('Nenhum alerta no momento', 'Todos os produtos estão acima do estoque mínimo definido.') : `
-      <table class="data-table">
+      <div class="table-scroll"><table class="data-table" style="min-width:560px;">
         <thead><tr><th>SKU</th><th>Produto</th><th>Estoque atual</th><th>Mínimo</th><th>Status</th></tr></thead>
         <tbody>
           ${lowStock.slice(0,8).map(p=>{
@@ -880,7 +917,7 @@ async function boot(){
             return `<tr><td class="font-mono">${escapeHtml(p.sku)}</td><td>${escapeHtml(p.name)}</td><td class="font-mono">${fmtNum(p.currentStock)} ${escapeHtml(p.unit||'un')}</td><td class="font-mono">${fmtNum(p.minStock)}</td><td><span class="tag ${st.cls}">${st.label}</span></td></tr>`;
           }).join('')}
         </tbody>
-      </table>`}
+      </table></div>`}
     </div>`;
   }
   function statCard(label, value, sub, color, iconName='box'){
@@ -910,7 +947,7 @@ async function boot(){
         <input class="input" id="prod-search" placeholder="Buscar por nome, SKU ou categoria..." style="max-width:340px;" value="${escapeHtml(S.filters.prodSearch)}" />
       </div>
       ${list.length===0 ? emptyState('Nenhum produto encontrado', can('editProducts') ? 'Cadastre seu primeiro produto usando o botão "Novo produto".' : 'Ainda não há produtos cadastrados.', 'image') : `
-      <table class="data-table">
+      <div class="table-scroll"><table class="data-table" style="min-width:760px;">
         <thead><tr><th></th><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Custo</th><th>Venda</th><th>Status</th>${can('editProducts')?'<th></th>':''}</tr></thead>
         <tbody>
           ${list.map(p=>{
@@ -933,7 +970,7 @@ async function boot(){
             </tr>`;
           }).join('')}
         </tbody>
-      </table>`}
+      </table></div>`}
     </div>`;
   }
 
@@ -954,7 +991,7 @@ async function boot(){
         </select>
       </div>
       ${list.length===0 ? emptyState('Nenhuma movimentação registrada', can('registerMov') ? 'Use os botões "Entrada" ou "Saída" no topo da página.' : 'Ainda não há movimentações.', 'movements') : `
-      <table class="data-table">
+      <div class="table-scroll"><table class="data-table" style="min-width:760px;">
         <thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th>Qtd.</th><th>Motivo</th><th>Valor</th><th>Usuário</th></tr></thead>
         <tbody>
           ${list.slice(0,200).map(m=>`
@@ -968,7 +1005,7 @@ async function boot(){
               <td>${escapeHtml(m.userName||'—')}</td>
             </tr>`).join('')}
         </tbody>
-      </table>`}
+      </table></div>`}
     </div>`;
   }
 
@@ -1001,7 +1038,7 @@ async function boot(){
       ${statCard('Total saídas', fmtNum(saidas.reduce((s,m)=>s+m.qty,0)), fmtBRL(totalSaidaVal)+' em vendas', 'var(--out)')}
       ${statCard('Resultado do período', fmtBRL(totalSaidaVal-totalEntradaVal), 'Vendas − custo de entrada')}
     </div>
-    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;">
+    <div class="charts-grid-2" style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;">
       <div class="card card-hoverable" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:12px;">Entradas x Saídas no período</div>
         <div style="position:relative;height:260px;">
@@ -1021,7 +1058,7 @@ async function boot(){
   function renderUsers(){
     return `
     <div class="card" style="padding:0;">
-      <table class="data-table">
+      <div class="table-scroll"><table class="data-table" style="min-width:640px;">
         <thead><tr><th>Usuário</th><th>E-mail</th><th>Permissão</th><th>Status</th><th></th></tr></thead>
         <tbody>
           ${S.users.map(u=>`
@@ -1042,7 +1079,7 @@ async function boot(){
               </td>
             </tr>`).join('')}
         </tbody>
-      </table>
+      </table></div>
     </div>
     <p style="font-size:12px;color:var(--muted);margin-top:12px;">
       <b>Operador</b>: registra entradas/saídas e vê produtos. <b>Gerente</b>: também cadastra/edita produtos e vê relatórios. <b>Administrador</b>: acesso total, incluindo gestão de usuários.

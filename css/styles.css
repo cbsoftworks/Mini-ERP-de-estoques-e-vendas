@@ -80,6 +80,34 @@
     .app-sidebar.open{transform:translateX(0)}
     .sidebar-overlay{position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:65}
   }
+
+  /* ---- Responsividade geral ---- */
+
+  /* Tabelas: em telas estreitas, rolam na horizontal em vez de quebrar o layout */
+  .table-scroll{width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .table-scroll table.data-table{width:100%;}
+
+  /* Grids de gráfico (dashboard/relatórios): empilham em telas médias/pequenas */
+  @media (max-width:1024px){
+    .charts-grid-2{grid-template-columns:1fr !important;}
+  }
+
+  /* Grids de formulário (modais de produto/movimentação): empilham em telas bem estreitas */
+  @media (max-width:480px){
+    .form-grid-2{grid-template-columns:1fr !important;}
+  }
+
+  @media (max-width:640px){
+    .app-sidebar{width:82vw !important; max-width:280px;}
+    .stat-num{font-size:26px;}
+    table.data-table{font-size:12.5px;}
+    table.data-table thead th, table.data-table tbody td{padding:10px 10px;}
+    .modal-box{border-radius:14px;}
+  }
+
+  @media (max-width:420px){
+    .login-foot{font-size:10.5px;}
+  }
   .skeleton{background:linear-gradient(90deg,#EFEDE6 25%,#F6F5F0 37%,#EFEDE6 63%); background-size:400% 100%; animation:sk 1.4s ease infinite}
   @keyframes sk{0%{background-position:100% 50%} 100%{background-position:0 50%}}
 
