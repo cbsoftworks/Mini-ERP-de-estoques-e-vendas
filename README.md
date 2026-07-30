@@ -2,13 +2,23 @@
 
 Aplicação web completa para controle de estoque: cadastro de produtos, entradas e saídas,
 relatórios e níveis de permissão. Usa **Firebase** (Authentication com Google + Firestore)
-como backend e roda como **um único arquivo HTML** — sem servidor, sem build.
+como backend, com o front-end organizado em arquivos separados (HTML, CSS e JS) — sem
+build, sem framework, roda em qualquer hospedagem estática.
 
-## Arquivos
+## Estrutura de arquivos
 
-- `index.html` — a aplicação inteira (interface + lógica + integração com Firebase)
-- `firestore.rules` — regras de segurança prontas para publicar no Firestore
-- `README.md` — este guia
+```
+├── index.html          → só a estrutura da página, carrega css/js/app
+├── css/
+│   └── styles.css      → todo o visual (cores, tipografia, componentes)
+├── js/
+│   ├── config.js       → único arquivo que você precisa editar (chaves do Firebase)
+│   └── app.js          → toda a lógica do app (estado, telas, Firestore, gráficos)
+├── firestore.rules     → regras de segurança prontas para publicar no Firestore
+├── vercel.json         → proxy das rotas de auth do Firebase (evita bloqueios em
+│                          Firefox/Safari quando hospedado em domínio próprio/Vercel)
+└── README.md           → este guia
+```
 
 ## 1. Criar o projeto no Firebase
 
@@ -27,11 +37,11 @@ como backend e roda como **um único arquivo HTML** — sem servidor, sem build.
 2. Em **Seus aplicativos**, clique no ícone **`</>`** (Web) e registre um app
    (não precisa marcar "Firebase Hosting").
 3. Copie o objeto `firebaseConfig` mostrado na tela.
-4. Abra `index.html` em um editor de texto, localize o bloco `FIREBASE_CONFIG`
-   perto do topo do `<script type="module">` e substitua pelos seus valores:
+4. Abra **`js/config.js`** em um editor de texto e substitua o bloco
+   `FIREBASE_CONFIG` pelos seus valores:
 
 ```js
-const FIREBASE_CONFIG = {
+export const FIREBASE_CONFIG = {
   apiKey: "...",
   authDomain: "...",
   projectId: "...",
@@ -41,18 +51,21 @@ const FIREBASE_CONFIG = {
 };
 ```
 
-5. Salve o arquivo.
+5. Salve o arquivo. Você não precisa mexer em mais nada — `index.html` e
+   `js/app.js` não têm nenhuma credencial.
 
 ## 3. Rodar localmente
 
-Basta abrir `index.html` no navegador. Alguns navegadores restringem
-`type="module"` em arquivos abertos via `file://`; se isso acontecer, rode um
-servidor local simples na pasta do arquivo:
+Como o app agora usa múltiplos arquivos com `import`/`export` de módulos ES,
+**é obrigatório rodar via servidor local** (não abre direto com duplo clique,
+`file://` bloqueia módulos JS entre arquivos):
 
 ```bash
 python3 -m http.server 8080
 # depois acesse http://localhost:8080
 ```
+
+Ou use a extensão "Live Server" do VS Code.
 
 ## 4. Publicar (Firebase Hosting — opcional, grátis)
 
@@ -67,8 +80,17 @@ Você também pode publicar em qualquer hospedagem estática (Vercel, Netlify,
 GitHub Pages etc.) — o app não depende de backend próprio, só do Firebase.
 
 **Importante:** em Authentication > Settings > Domínios autorizados, adicione o
-domínio onde o app vai rodar (ex: `seuapp.web.app` ou `localhost`), senão o
+domínio onde o app vai rodar (ex: `seuapp.vercel.app` ou `localhost`), senão o
 login com Google será bloqueado.
+
+**Se for hospedar em um domínio diferente de `*.firebaseapp.com`** (Vercel,
+Netlify, domínio próprio etc.), configure o `authDomain` em `js/config.js`
+para ser o **seu próprio domínio**, e use o `vercel.json` incluído (ajuste o
+projeto do Firebase nele) para proxiar `/__/auth/*` e `/__/firebase/*` — isso
+evita erros de login em navegadores com proteção contra rastreamento forte
+(Firefox, Safari). Depois disso, também é preciso adicionar o
+`redirect_uri` (`https://seudominio/__/auth/handler`) nas credenciais OAuth
+do projeto no [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 
 ## Como funcionam os níveis de permissão
 
@@ -110,8 +132,10 @@ impede saída maior que o estoque disponível.
 
 ## Personalização
 
-- Cores, tipografia e o estilo das "etiquetas" (tags) ficam no `<style>` no
-  topo do `index.html`, em variáveis CSS (`--accent`, `--in`, `--out` etc.).
+- Cores, tipografia e o estilo das "etiquetas" (tags) ficam em `css/styles.css`,
+  em variáveis CSS (`--accent`, `--in`, `--out` etc.), no bloco `:root`.
 - Para adicionar novos campos a produtos ou movimentações, edite o formulário
-  correspondente (`__openProductModal` / `__openMovementModal`) e os campos
-  salvos no Firestore logo abaixo.
+  correspondente (`__openProductModal` / `__openMovementModal`) em `js/app.js`
+  e os campos salvos no Firestore logo abaixo.
+- As credenciais do Firebase ficam isoladas em `js/config.js` — é o único
+  arquivo que precisa de edição para conectar a um novo projeto Firebase.
