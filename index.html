@@ -123,6 +123,7 @@ const FIREBASE_CONFIG = {
   storageBucket: "estoqueteste-143a6.firebasestorage.app",
   messagingSenderId: "739016859286",
   appId: "1:739016859286:web:10dbf5d6910d58885b2cb7"
+
 };
 
 const isConfigured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("COLE_AQUI");
@@ -314,7 +315,12 @@ async function boot(){
   // bloqueiam esse storage entre domínios diferentes, causando o erro
   // "missing initial state" de forma imprevisível. O popup não sofre desse
   // problema, então é a via confiável entre navegadores.
+  let signInInFlight = false; // trava contra duplo clique: um 2º popup cancela o 1º e gera erro falso
   window.__signIn = async () => {
+    if(signInInFlight) return;
+    signInInFlight = true;
+    const btn = document.getElementById('btn-google-signin');
+    if(btn) btn.disabled = true;
     try{
       await authMod.setPersistence(auth, authMod.browserLocalPersistence);
       await authMod.signInWithPopup(auth, provider);
@@ -334,6 +340,9 @@ async function boot(){
         msg = 'Não foi possível entrar: ' + (e.code||e.message);
       }
       toast(msg, 'error');
+    } finally {
+      signInInFlight = false;
+      if(btn) btn.disabled = false;
     }
   };
   window.__signOut = async () => { await authMod.signOut(auth); };
@@ -613,7 +622,7 @@ async function boot(){
         <div style="width:52px;height:52px;border-radius:14px;background:var(--ink);color:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Barlow Semi Condensed';font-weight:800;font-size:28px;margin:0 auto 18px;">+</div>
         <div class="font-display" style="font-size:30px;font-weight:700;">Estoque+</div>
         <div style="color:var(--ink-soft);font-size:14px;margin:6px 0 28px;">Controle de estoque, entradas, saídas e relatórios.</div>
-        <button onclick="window.__signIn()" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;">
+        <button id="btn-google-signin" onclick="window.__signIn()" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px;">
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.1 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2.1 14-5.4l-6.5-5.3C29.4 35.4 26.9 36 24 36c-5.3 0-9.8-3.4-11.3-8.1l-6.5 5C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.5 5.3C39.9 37 44 31.4 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
           Entrar com Google
         </button>
@@ -738,12 +747,16 @@ async function boot(){
       <div class="card" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:2px;">Movimentações — últimos 14 dias</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Entradas x Saídas por dia</div>
-        <canvas id="chart-movs" height="130"></canvas>
+        <div style="position:relative;height:260px;">
+          <canvas id="chart-movs"></canvas>
+        </div>
       </div>
       <div class="card" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:2px;">Estoque por categoria</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Quantidade total por categoria</div>
-        <canvas id="chart-cat" height="130"></canvas>
+        <div style="position:relative;height:260px;">
+          <canvas id="chart-cat"></canvas>
+        </div>
       </div>
     </div>
     <div class="card" style="margin-top:16px;padding:0;">
@@ -877,11 +890,15 @@ async function boot(){
     <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;">
       <div class="card" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:12px;">Entradas x Saídas no período</div>
-        <canvas id="chart-report-line" height="140"></canvas>
+        <div style="position:relative;height:260px;">
+          <canvas id="chart-report-line"></canvas>
+        </div>
       </div>
       <div class="card" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:12px;">Produtos mais movimentados</div>
-        <canvas id="chart-report-top" height="140"></canvas>
+        <div style="position:relative;height:260px;">
+          <canvas id="chart-report-top"></canvas>
+        </div>
       </div>
     </div>`;
   }
