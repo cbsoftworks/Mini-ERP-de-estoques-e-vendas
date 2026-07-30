@@ -95,6 +95,60 @@ async function boot(){
   const escapeHtml = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const uid = () => Math.random().toString(36).slice(2,10);
 
+  /* ---------------- ICONS (inline SVG, stroke-based) ---------------- */
+  const ICON_PATHS = {
+    dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    products: '<path d="M3 7.5 12 3l9 4.5-9 4.5-9-4.5Z"/><path d="M3 7.5v9L12 21l9-4.5v-9"/><path d="M12 12v9"/>',
+    movements: '<path d="M4 7h13"/><path d="M14 3l3 4-3 4"/><path d="M20 17H7"/><path d="M10 21l-3-4 3-4"/>',
+    reports: '<path d="M4 20V10"/><path d="M11 20V4"/><path d="M18 20v-7"/>',
+    users: '<circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9.5" r="2.5"/><path d="M15.2 14.3c2.6.3 4.3 2.4 4.3 5.7"/>',
+    camera: '<rect x="3" y="7" width="18" height="13" rx="2.2"/><path d="M8 7l1.6-2.4A1.6 1.6 0 0 1 10.9 4h2.2c.5 0 .97.26 1.24.66L15.9 7"/><circle cx="12" cy="13.5" r="3.6"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/>',
+    trash: '<path d="M4 7h16"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+    edit: '<path d="M4 20h4L18.6 9.4a2 2 0 0 0 0-2.8L17.4 5.4a2 2 0 0 0-2.8 0L4 16v4Z"/><path d="M13.5 6.5l4 4"/>',
+    plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    arrowDown: '<path d="M12 4v15"/><path d="M6 13l6 6 6-6"/>',
+    arrowUp: '<path d="M12 20V5"/><path d="M6 11l6-6 6 6"/>',
+    download: '<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/>',
+    x: '<path d="M5 5l14 14"/><path d="M19 5 5 19"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+    alert: '<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
+    box: '<path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+  };
+  function icon(name, size=16, strokeWidth=2){
+    return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`;
+  }
+
+  /* ---------------- IMAGE HELPERS (product photo) ---------------- */
+  // Redimensiona a imagem no navegador e devolve um data-URL JPEG compacto,
+  // para guardarmos a foto direto no documento do Firestore sem precisar
+  // configurar o Firebase Storage.
+  function resizeImageFile(file, maxSize=480, quality=0.74){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if(width > height){ if(width > maxSize){ height = Math.round(height * (maxSize/width)); width = maxSize; } }
+          else { if(height > maxSize){ width = Math.round(width * (maxSize/height)); height = maxSize; } }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0,0,width,height);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => reject(new Error('Arquivo de imagem inválido.'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   function toast(msg, type='default'){
     let host = document.getElementById('toast-host');
     if(!host){
@@ -289,10 +343,26 @@ async function boot(){
   /* ---------------- ACTIONS: PRODUCTS ---------------- */
   window.__openProductModal = (id) => {
     const p = id ? S.products.find(x=>x.id===id) : null;
+    let photoData = p && p.photo ? p.photo : '';
     openModal(`
       <form id="product-form" style="padding:22px;">
         <div class="font-display" style="font-size:19px;font-weight:700;margin-bottom:4px;">${p?'Editar produto':'Novo produto'}</div>
         <div style="font-size:12.5px;color:var(--muted);margin-bottom:16px;">${p?('SKU '+escapeHtml(p.sku)):'Preencha os dados do item de estoque'}</div>
+
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:18px;">
+          <div class="photo-drop" id="photo-drop">
+            <div id="photo-drop-content">${photoData
+              ? `<img src="${photoData}" alt="Foto do produto" />`
+              : `<div class="photo-placeholder">${icon('camera',22)}<span>Adicionar foto</span></div>`}</div>
+          </div>
+          <input type="file" id="photo-input" accept="image/*" style="display:none;" />
+          <div style="flex:1;padding-top:2px;">
+            <label class="field-label">Foto do produto</label>
+            <div style="font-size:12px;color:var(--ink-soft);line-height:1.5;">Clique na área ao lado ou arraste uma imagem (JPG/PNG, até 5MB). A imagem é redimensionada automaticamente.</div>
+            <button type="button" class="btn btn-ghost btn-sm" id="photo-remove-btn" style="margin-top:9px;${photoData?'':'display:none;'}">${icon('trash',13)} Remover foto</button>
+          </div>
+        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div style="grid-column:1/-1;">
             <label class="field-label">Nome do produto</label>
@@ -334,6 +404,43 @@ async function boot(){
       </form>
     `);
     window.closeModalGlobal = closeModal;
+
+    /* --- Photo dropzone wiring --- */
+    const dropZone = document.getElementById('photo-drop');
+    const dropContent = document.getElementById('photo-drop-content');
+    const photoInput = document.getElementById('photo-input');
+    const removeBtn = document.getElementById('photo-remove-btn');
+
+    function renderPhotoPreview(){
+      dropContent.innerHTML = photoData
+        ? `<img src="${photoData}" alt="Foto do produto" />`
+        : `<div class="photo-placeholder">${icon('camera',22)}<span>Adicionar foto</span></div>`;
+      removeBtn.style.display = photoData ? '' : 'none';
+    }
+    async function handleFile(file){
+      if(!file) return;
+      if(!file.type.startsWith('image/')){ toast('Selecione um arquivo de imagem.', 'error'); return; }
+      if(file.size > 5*1024*1024){ toast('Imagem muito grande (máximo 5MB).', 'error'); return; }
+      try{
+        photoData = await resizeImageFile(file);
+        renderPhotoPreview();
+      }catch(err){ toast('Não foi possível processar a imagem: '+err.message, 'error'); }
+    }
+    dropZone.addEventListener('click', ()=> photoInput.click());
+    photoInput.addEventListener('change', ()=> handleFile(photoInput.files[0]));
+    dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('drag'); });
+    dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', (e)=>{
+      e.preventDefault(); dropZone.classList.remove('drag');
+      handleFile(e.dataTransfer.files && e.dataTransfer.files[0]);
+    });
+    removeBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      photoData = '';
+      photoInput.value = '';
+      renderPhotoPreview();
+    });
+
     document.getElementById('product-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);
@@ -345,6 +452,7 @@ async function boot(){
         minStock: Number(fd.get('minStock'))||0,
         costPrice: Number(fd.get('costPrice'))||0,
         salePrice: Number(fd.get('salePrice'))||0,
+        photo: photoData || '',
         updatedAt: F.serverTimestamp(),
       };
       try{
@@ -541,11 +649,11 @@ async function boot(){
     }
 
     const NAV = [
-      {id:'dashboard', label:'Painel', icon:'▤', show:true},
-      {id:'products', label:'Produtos', icon:'▦', show:can('viewProducts')},
-      {id:'movements', label:'Movimentações', icon:'⇄', show:can('registerMov') || can('viewProducts')},
-      {id:'reports', label:'Relatórios', icon:'▲', show:can('viewReports')},
-      {id:'users', label:'Usuários', icon:'◐', show:can('manageUsers')},
+      {id:'dashboard', label:'Painel', icon:'dashboard', show:true},
+      {id:'products', label:'Produtos', icon:'products', show:can('viewProducts')},
+      {id:'movements', label:'Movimentações', icon:'movements', show:can('registerMov') || can('viewProducts')},
+      {id:'reports', label:'Relatórios', icon:'reports', show:can('viewReports')},
+      {id:'users', label:'Usuários', icon:'users', show:can('manageUsers')},
     ];
 
     root.innerHTML = `
@@ -559,7 +667,7 @@ async function boot(){
         <nav style="display:flex;flex-direction:column;gap:3px;flex:1;">
           ${NAV.filter(n=>n.show).map(n=>`
             <div class="sidebar-link ${S.view===n.id?'active':''}" onclick="window.__nav('${n.id}')">
-              <span style="width:16px;text-align:center;">${n.icon}</span>${n.label}
+              ${icon(n.icon,16)}${n.label}
             </div>`).join('')}
         </nav>
         <div style="border-top:1px solid #333A44;padding-top:12px;margin-top:8px;">
@@ -570,7 +678,7 @@ async function boot(){
               <div style="color:#8B93A0;font-size:11px;">${ROLE_LABEL[S.profile.role]}</div>
             </div>
           </div>
-          <button onclick="window.__signOut()" class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;background:#2A3038;color:#C7CCD4;border-color:#3A414C;">Sair</button>
+          <button onclick="window.__signOut()" class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:8px;background:#2A3038;color:#C7CCD4;border-color:#3A414C;">${icon('logout',14)} Sair</button>
         </div>
       </aside>
 
@@ -578,7 +686,10 @@ async function boot(){
         <header style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:10;">
           <div style="display:flex;align-items:center;gap:10px;">
             <button onclick="window.__toggleSidebar()" class="btn btn-ghost btn-sm" style="display:none;" id="menu-btn">☰</button>
-            <div class="font-display" style="font-size:19px;font-weight:700;">${viewTitle(S.view)}</div>
+            <div>
+              <div class="font-display" style="font-size:19px;font-weight:700;line-height:1.2;">${viewTitle(S.view)}</div>
+              <div class="view-subtitle">${viewSubtitle(S.view)}</div>
+            </div>
           </div>
           <div style="display:flex;gap:8px;">${headerActions(S.view)}</div>
         </header>
@@ -597,12 +708,21 @@ async function boot(){
   function viewTitle(v){
     return {dashboard:'Painel geral', products:'Produtos', movements:'Movimentações de estoque', reports:'Relatórios', users:'Usuários e permissões'}[v] || '';
   }
+  function viewSubtitle(v){
+    return {
+      dashboard:'Visão geral do estoque, alertas e atividade recente',
+      products:'Cadastre itens, defina preços e acompanhe níveis de estoque',
+      movements:'Histórico de entradas e saídas registradas no sistema',
+      reports:'Análises de período, custos e produtos mais movimentados',
+      users:'Gerencie o acesso e o nível de permissão de cada pessoa',
+    }[v] || '';
+  }
   function headerActions(v){
-    if(v==='products' && can('editProducts')) return `<button class="btn btn-accent btn-sm" onclick="window.__openProductModal()">+ Novo produto</button>`;
+    if(v==='products' && can('editProducts')) return `<button class="btn btn-accent btn-sm" onclick="window.__openProductModal()">${icon('plus',14)} Novo produto</button>`;
     if(v==='movements' && can('registerMov')) return `
-      <button class="btn btn-ghost btn-sm" style="border-color:var(--in);color:var(--in);" onclick="window.__openMovementModal('entrada')">↓ Entrada</button>
-      <button class="btn btn-ghost btn-sm" style="border-color:var(--out);color:var(--out);" onclick="window.__openMovementModal('saida')">↑ Saída</button>`;
-    if(v==='reports') return `<button class="btn btn-ghost btn-sm" onclick="window.__exportMovementsCsv()">Exportar CSV</button>`;
+      <button class="btn btn-ghost btn-sm" style="border-color:var(--in);color:var(--in);" onclick="window.__openMovementModal('entrada')">${icon('arrowDown',14)} Entrada</button>
+      <button class="btn btn-ghost btn-sm" style="border-color:var(--out);color:var(--out);" onclick="window.__openMovementModal('saida')">${icon('arrowUp',14)} Saída</button>`;
+    if(v==='reports') return `<button class="btn btn-ghost btn-sm" onclick="window.__exportMovementsCsv()">${icon('download',14)} Exportar CSV</button>`;
     return '';
   }
 
@@ -624,20 +744,20 @@ async function boot(){
 
     return `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px;">
-      ${statCard('Produtos cadastrados', fmtNum(totalProducts), 'Itens ativos no catálogo')}
-      ${statCard('Valor em estoque', fmtBRL(stockValue), 'Baseado no custo unitário')}
-      ${statCard('Itens em estoque baixo', fmtNum(lowStock.length), lowStock.length? 'Requer atenção' : 'Tudo sob controle', lowStock.length?'var(--out)':'var(--in)')}
-      ${statCard('Movimentações hoje', fmtNum(movToday.length), 'Entradas e saídas')}
+      ${statCard('Produtos cadastrados', fmtNum(totalProducts), 'Itens ativos no catálogo', null, 'box')}
+      ${statCard('Valor em estoque', fmtBRL(stockValue), 'Baseado no custo unitário', null, 'reports')}
+      ${statCard('Itens em estoque baixo', fmtNum(lowStock.length), lowStock.length? 'Requer atenção' : 'Tudo sob controle', lowStock.length?'var(--out)':'var(--in)', 'alert')}
+      ${statCard('Movimentações hoje', fmtNum(movToday.length), 'Entradas e saídas', null, 'movements')}
     </div>
     <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;" id="dash-charts-grid">
-      <div class="card" style="padding:20px;">
+      <div class="card card-hoverable" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:2px;">Movimentações — últimos 14 dias</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Entradas x Saídas por dia</div>
         <div style="position:relative;height:260px;">
           <canvas id="chart-movs"></canvas>
         </div>
       </div>
-      <div class="card" style="padding:20px;">
+      <div class="card card-hoverable" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:2px;">Estoque por categoria</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Quantidade total por categoria</div>
         <div style="position:relative;height:260px;">
@@ -662,15 +782,18 @@ async function boot(){
       </table>`}
     </div>`;
   }
-  function statCard(label, value, sub, color){
-    return `<div class="card" style="padding:16px 18px;">
+  function statCard(label, value, sub, color, iconName='box'){
+    const c = color || 'var(--ink)';
+    return `<div class="card stat-card" style="padding:16px 18px;">
+      <div class="stat-icon-badge" style="background:${c}18;color:${c};">${icon(iconName,17)}</div>
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;">${label}</div>
       <div class="stat-num" style="${color?`color:${color}`:''}">${value}</div>
       <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">${sub}</div>
     </div>`;
   }
-  function emptyState(title, sub){
-    return `<div style="padding:40px 20px;text-align:center;">
+  function emptyState(title, sub, iconName='box'){
+    return `<div style="padding:44px 20px;text-align:center;">
+      <div class="empty-icon">${icon(iconName,20)}</div>
       <div style="font-weight:700;font-size:14px;">${title}</div>
       <div style="font-size:12.5px;color:var(--muted);margin-top:4px;">${sub}</div>
     </div>`;
@@ -684,23 +807,26 @@ async function boot(){
       <div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;">
         <input class="input" id="prod-search" placeholder="Buscar por nome, SKU ou categoria..." style="max-width:340px;" value="${escapeHtml(S.filters.prodSearch)}" />
       </div>
-      ${list.length===0 ? emptyState('Nenhum produto encontrado', can('editProducts') ? 'Cadastre seu primeiro produto usando o botão "Novo produto".' : 'Ainda não há produtos cadastrados.') : `
+      ${list.length===0 ? emptyState('Nenhum produto encontrado', can('editProducts') ? 'Cadastre seu primeiro produto usando o botão "Novo produto".' : 'Ainda não há produtos cadastrados.', 'image') : `
       <table class="data-table">
-        <thead><tr><th>SKU</th><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Custo</th><th>Venda</th><th>Status</th>${can('editProducts')?'<th></th>':''}</tr></thead>
+        <thead><tr><th></th><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Custo</th><th>Venda</th><th>Status</th>${can('editProducts')?'<th></th>':''}</tr></thead>
         <tbody>
           ${list.map(p=>{
             const st = stockStatus(p);
             return `<tr>
-              <td class="font-mono">${escapeHtml(p.sku)}</td>
-              <td style="font-weight:600;">${escapeHtml(p.name)}</td>
+              <td style="width:1%;">${p.photo ? `<img class="prod-thumb" src="${p.photo}" alt="${escapeHtml(p.name)}" />` : `<div class="prod-thumb-placeholder">${icon('box',16)}</div>`}</td>
+              <td>
+                <div style="font-weight:600;">${escapeHtml(p.name)}</div>
+                <div class="font-mono" style="font-size:11.5px;color:var(--muted);">${escapeHtml(p.sku)}</div>
+              </td>
               <td>${escapeHtml(p.category||'—')}</td>
               <td class="font-mono">${fmtNum(p.currentStock)} ${escapeHtml(p.unit||'un')}</td>
               <td class="font-mono">${fmtBRL(p.costPrice)}</td>
               <td class="font-mono">${fmtBRL(p.salePrice)}</td>
               <td><span class="tag ${st.cls}">${st.label}</span></td>
               ${can('editProducts') ? `<td style="text-align:right;white-space:nowrap;">
-                <button class="btn btn-ghost btn-sm" onclick="window.__openProductModal('${p.id}')">Editar</button>
-                ${can('deleteProducts')?`<button class="btn btn-danger btn-sm" onclick="window.__deleteProduct('${p.id}')">Excluir</button>`:''}
+                <button class="btn btn-ghost btn-sm" onclick="window.__openProductModal('${p.id}')">${icon('edit',13)} Editar</button>
+                ${can('deleteProducts')?`<button class="btn btn-danger btn-sm" onclick="window.__deleteProduct('${p.id}')">${icon('trash',13)} Excluir</button>`:''}
               </td>`:''}
             </tr>`;
           }).join('')}
@@ -725,7 +851,7 @@ async function boot(){
           <option value="all">Todos os produtos</option>${prodOptions}
         </select>
       </div>
-      ${list.length===0 ? emptyState('Nenhuma movimentação registrada', can('registerMov') ? 'Use os botões "Entrada" ou "Saída" no topo da página.' : 'Ainda não há movimentações.') : `
+      ${list.length===0 ? emptyState('Nenhuma movimentação registrada', can('registerMov') ? 'Use os botões "Entrada" ou "Saída" no topo da página.' : 'Ainda não há movimentações.', 'movements') : `
       <table class="data-table">
         <thead><tr><th>Data</th><th>Tipo</th><th>Produto</th><th>Qtd.</th><th>Motivo</th><th>Valor</th><th>Usuário</th></tr></thead>
         <tbody>
@@ -774,13 +900,13 @@ async function boot(){
       ${statCard('Resultado do período', fmtBRL(totalSaidaVal-totalEntradaVal), 'Vendas − custo de entrada')}
     </div>
     <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;">
-      <div class="card" style="padding:20px;">
+      <div class="card card-hoverable" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:12px;">Entradas x Saídas no período</div>
         <div style="position:relative;height:260px;">
           <canvas id="chart-report-line"></canvas>
         </div>
       </div>
-      <div class="card" style="padding:20px;">
+      <div class="card card-hoverable" style="padding:20px;">
         <div class="font-display" style="font-weight:700;font-size:15px;margin-bottom:12px;">Produtos mais movimentados</div>
         <div style="position:relative;height:260px;">
           <canvas id="chart-report-top"></canvas>
