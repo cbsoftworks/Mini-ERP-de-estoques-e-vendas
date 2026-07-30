@@ -66,9 +66,18 @@ async function boot(){
     users: [],
     view: 'dashboard',
     unsub: [],
-    filters: { prodSearch:'', movType:'all', movProduct:'all', repFrom:'', repTo:'' },
+    filters: { prodSearch:'', prodSort:'name-asc', movType:'all', movProduct:'all', repFrom:'', repTo:'' },
     charts: {},
   };
+
+  // ---- Sessão única: cada login gera um ID aleatório e grava no próprio
+  // perfil (users/{uid}.sessionId). Se esse campo mudar pra outro valor (ou
+  // seja, alguém logou em outro lugar), essa aba se desconecta sozinha.
+  let mySessionId = null;
+  let sessionClaimed = false;
+  function newSessionId(){
+    return (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now()+'-'+Math.random().toString(36).slice(2));
+  }
 
   const ROLE_LABEL = { admin:'Administrador', gerente:'Gerente', operador:'Operador', pendente:'Pendente' };
   const PERMS = {
@@ -236,6 +245,14 @@ async function boot(){
     S.user = user;
     try{
       await ensureUserProfile(user);
+      // Reivindica esta aba como a sessão ativa: sobrescreve o sessionId no
+      // Firestore. Qualquer outra aba/dispositivo já logado com esse mesmo
+      // usuário vai perceber (via listenUsers) que o sessionId mudou e vai
+      // se desconectar sozinho.
+      mySessionId = newSessionId();
+      sessionClaimed = false;
+      await F.updateDoc(F.doc(db,'users',user.uid), { sessionId: mySessionId, lastLoginAt: F.serverTimestamp() });
+      sessionClaimed = true;
       listenUsers();   // needed to know own profile/role live
       listenProducts();
       listenMovements();
@@ -285,7 +302,24 @@ async function boot(){
       if(btn) btn.disabled = false;
     }
   };
-  window.__signOut = async () => { await authMod.signOut(auth); };
+  window.__signOut = () => {
+    openModal(`
+      <div style="padding:28px;text-align:center;">
+        <div class="empty-icon" style="background:var(--out-soft);color:var(--out);margin-bottom:16px;">${icon('logout',20)}</div>
+        <div class="font-display" style="font-size:18px;font-weight:700;margin-bottom:8px;">Sair da conta?</div>
+        <p style="color:var(--ink-soft);font-size:13.5px;line-height:1.6;margin:0 0 22px;">Você precisará entrar novamente com sua conta Google para acessar o sistema.</p>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="window.__closeModal()">Cancelar</button>
+          <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="window.__confirmSignOut()">${icon('logout',14)} Sair</button>
+        </div>
+      </div>
+    `);
+  };
+  window.__closeModal = () => closeModal();
+  window.__confirmSignOut = async () => {
+    closeModal();
+    await authMod.signOut(auth);
+  };
 
   // Captura o resultado quando o login cai no fallback de redirect.
   authMod.getRedirectResult(auth).then((result)=>{
@@ -330,6 +364,15 @@ async function boot(){
     const un = F.onSnapshot(qUsers, (snap) => {
       S.users = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       const mine = S.users.find(u => u.id === S.user.uid);
+      // Se já reivindicamos a sessão e o servidor mostra um sessionId
+      // diferente do nosso, é porque o mesmo usuário logou em outro
+      // dispositivo/navegador depois de nós — encerramos esta sessão aqui.
+      if(sessionClaimed && mine && mine.sessionId && mine.sessionId !== mySessionId){
+        sessionClaimed = false;
+        toast('Sua conta foi acessada em outro dispositivo ou navegador. Esta sessão foi encerrada.', 'error');
+        authMod.signOut(auth);
+        return;
+      }
       S.profile = mine || { role:'pendente', active:false, name:S.user.displayName, email:S.user.email };
       renderShell();
     }, (err)=> toast('Erro ao carregar usuários: '+err.message,'error'));
@@ -467,6 +510,14 @@ async function boot(){
         photo: photoData || '',
         updatedAt: F.serverTimestamp(),
       };
+      // SKU/Código precisa ser único: comparação sem diferenciar maiúsculas/
+      // minúsculas nem espaços, ignorando o próprio produto quando é edição.
+      const skuKey = data.sku.trim().toLowerCase();
+      const dup = S.products.some(x => x.id !== (p?p.id:null) && (x.sku||'').trim().toLowerCase() === skuKey);
+      if(dup){
+        toast('Já existe um produto com esse SKU/Código. Escolha um código único.', 'error');
+        return;
+      }
       try{
         if(p){
           await F.updateDoc(F.doc(db,'products',p.id), data);
@@ -606,8 +657,18 @@ async function boot(){
   /* ---------------- FILTER HELPERS ---------------- */
   function filteredProducts(){
     const q = S.filters.prodSearch.toLowerCase();
-    if(!q) return S.products;
-    return S.products.filter(p => (p.name||'').toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q));
+    let list = !q ? S.products.slice() : S.products.filter(p => (p.name||'').toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q));
+    const collator = new Intl.Collator('pt-BR', { sensitivity:'base' });
+    const sorters = {
+      'name-asc':    (a,b) => collator.compare(a.name||'', b.name||''),
+      'name-desc':   (a,b) => collator.compare(b.name||'', a.name||''),
+      'category-asc':(a,b) => collator.compare(a.category||'', b.category||'') || collator.compare(a.name||'', b.name||''),
+      'sku-asc':     (a,b) => collator.compare(a.sku||'', b.sku||''),
+      'stock-desc':  (a,b) => (b.currentStock||0) - (a.currentStock||0),
+      'stock-asc':   (a,b) => (a.currentStock||0) - (b.currentStock||0),
+    };
+    list.sort(sorters[S.filters.prodSort] || sorters['name-asc']);
+    return list;
   }
   function filteredMovements(){
     let list = S.movements;
@@ -626,6 +687,15 @@ async function boot(){
     <div class="login-wrap">
       <div class="login-side">
         <div class="side-glow"></div>
+        <div class="sparks">
+          <span class="spark" style="left:8%; animation-delay:0s;"></span>
+          <span class="spark" style="left:20%; animation-delay:1.3s;"></span>
+          <span class="spark" style="left:34%; animation-delay:2.6s;"></span>
+          <span class="spark" style="left:48%; animation-delay:.7s;"></span>
+          <span class="spark" style="left:62%; animation-delay:3.4s;"></span>
+          <span class="spark" style="left:76%; animation-delay:2s;"></span>
+          <span class="spark" style="left:88%; animation-delay:4.2s;"></span>
+        </div>
         <div class="login-brandbar">
           <div class="login-logo">${icon('warehouse',24,1.8)}</div>
           <div>
@@ -671,7 +741,7 @@ async function boot(){
 
       <div class="login-panel">
         <div class="login-card">
-          <div class="login-lock">${icon('lock',26,1.8)}</div>
+          <div class="login-logo login-logo-center">${icon('warehouse',26,1.8)}</div>
           <div class="font-display" style="font-size:25px;font-weight:700;text-align:center;color:#fff;">Bem-vindo de volta!</div>
           <div style="color:#9AA3B0;font-size:13.5px;margin:6px 0 30px;text-align:center;">Entre com sua conta Google para acessar seu painel</div>
 
@@ -692,9 +762,28 @@ async function boot(){
 
       /* ---- Lado esquerdo: marca + ilustração ---- */
       .login-side{position:relative;overflow:hidden;padding:clamp(32px,50vw,72px);display:flex;flex-direction:column;justify-content:center;}
-      .side-glow{position:absolute;inset:0;background:radial-gradient(ellipse 620px 520px at 24% 58%, rgba(240,160,32,.18), transparent 65%);}
+      .side-glow{position:absolute;inset:0;background:radial-gradient(ellipse 620px 520px at 24% 58%, rgba(240,160,32,.18), transparent 65%);animation:glowPulse 6s ease-in-out infinite;}
+      @keyframes glowPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(1.08);}}
+
+      /* Partículas douradas subindo lentamente no fundo do lado esquerdo */
+      .sparks{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;}
+      .spark{position:absolute;bottom:-12px;width:4px;height:4px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px 2px rgba(240,160,32,.65);opacity:0;animation:sparkRise 8s ease-in infinite;}
+      @keyframes sparkRise{
+        0%{transform:translateY(0) scale(.6);opacity:0;}
+        12%{opacity:.9;}
+        80%{opacity:.4;}
+        100%{transform:translateY(-620px) scale(1.15);opacity:0;}
+      }
+
       .login-brandbar{position:relative;z-index:2;display:flex;align-items:center;gap:16px;margin-bottom:clamp(32px,4vw,56px);}
-      .login-logo{width:56px;height:56px;border-radius:14px;background:linear-gradient(160deg,#F5C878,var(--accent));color:#3D2A05;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 10px 24px -8px rgba(240,160,32,.55);}
+      .login-logo{position:relative;width:56px;height:56px;border-radius:14px;background:linear-gradient(160deg,#F5C878,var(--accent));color:#3D2A05;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 10px 24px -8px rgba(240,160,32,.55);}
+      .login-logo::after{content:'';position:absolute;inset:0;border-radius:inherit;animation:logoPulseRing 2.6s ease-out infinite;}
+      @keyframes logoPulseRing{
+        0%{box-shadow:0 0 0 0 rgba(240,160,32,.5);}
+        70%{box-shadow:0 0 0 16px rgba(240,160,32,0);}
+        100%{box-shadow:0 0 0 0 rgba(240,160,32,0);}
+      }
+      .login-logo-center{margin:0 auto 22px;}
       .login-brand{font-size:clamp(26px,2.6vw,32px);font-weight:800;color:#fff;line-height:1;}
       .login-brand span{color:var(--accent);}
       .login-brand-sub{font-size:13.5px;color:#8D95A2;margin-top:8px;line-height:1.5;}
@@ -734,8 +823,9 @@ async function boot(){
       /* ---- Lado direito: card de login ---- */
       .login-panel{display:flex;align-items:center;justify-content:center;padding:24px;background:#12151A;}
       .login-card{width:100%;max-width:410px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:40px 38px;box-shadow:0 30px 60px -30px rgba(0,0,0,.7);}
-      .login-lock{width:64px;height:64px;border-radius:16px;background:rgba(240,160,32,.14);border:1px solid rgba(240,160,32,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 22px;}
-      .btn-enter{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;font-size:14.5px;font-weight:700;font-family:'Inter',sans-serif;color:#241804;background:linear-gradient(160deg,#F5C878,var(--accent));border:none;border-radius:10px;cursor:pointer;box-shadow:0 12px 26px -12px rgba(240,160,32,.55);transition:.15s ease;}
+      .btn-enter{position:relative;overflow:hidden;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;font-size:14.5px;font-weight:700;font-family:'Inter',sans-serif;color:#241804;background:linear-gradient(160deg,#F5C878,var(--accent));border:none;border-radius:10px;cursor:pointer;box-shadow:0 12px 26px -12px rgba(240,160,32,.55);transition:.15s ease;}
+      .btn-enter::before{content:'';position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.6),transparent);transform:skewX(-20deg);animation:btnShine 4.5s ease-in-out infinite;}
+      @keyframes btnShine{0%{left:-60%;}35%{left:130%;}100%{left:130%;}}
       .btn-enter:hover{filter:brightness(1.06);transform:translateY(-1px);}
       .btn-enter:active{transform:translateY(0);}
       .login-foot{margin-top:30px;padding-top:20px;border-top:1px solid rgba(255,255,255,.07);font-size:11.5px;color:#5E6570;text-align:center;}
@@ -752,6 +842,9 @@ async function boot(){
       @media (max-width:420px){
         .login-panel{padding:14px;}
         .login-card{padding:30px 22px;border-radius:16px;}
+      }
+      @media (prefers-reduced-motion: reduce){
+        .side-glow, .spark, .login-logo::after, .btn-enter::before, .float-badge{animation:none !important;}
       }
     </style>`;
   }
@@ -787,20 +880,20 @@ async function boot(){
     ];
 
     root.innerHTML = `
-    <div style="display:flex;min-height:100vh;">
+    <div class="app-shell">
       <div class="sidebar-overlay" style="display:none;" onclick="window.__toggleSidebar()"></div>
       <aside class="app-sidebar" style="width:230px;background:var(--ink);padding:18px 12px;display:flex;flex-direction:column;">
         <div style="display:flex;align-items:center;gap:10px;padding:6px 8px 22px;">
           <div style="width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-family:'Barlow Semi Condensed';font-weight:800;font-size:17px;">+</div>
           <div class="font-display" style="color:#fff;font-size:18px;font-weight:700;">Estoque+</div>
         </div>
-        <nav style="display:flex;flex-direction:column;gap:3px;flex:1;">
+        <nav style="display:flex;flex-direction:column;gap:3px;flex:1;overflow-y:auto;">
           ${NAV.filter(n=>n.show).map(n=>`
             <div class="sidebar-link ${S.view===n.id?'active':''}" onclick="window.__nav('${n.id}')">
               ${icon(n.icon,16)}${n.label}
             </div>`).join('')}
         </nav>
-        <div style="border-top:1px solid #333A44;padding-top:12px;margin-top:8px;">
+        <div style="border-top:1px solid #333A44;padding-top:12px;margin-top:8px;flex-shrink:0;">
           <div style="display:flex;align-items:center;gap:9px;padding:6px 8px;">
             ${S.profile.photoURL?`<img src="${S.profile.photoURL}" style="width:30px;height:30px;border-radius:50%;">`:`<div style="width:30px;height:30px;border-radius:50%;background:#3A414C;"></div>`}
             <div style="min-width:0;">
@@ -812,7 +905,7 @@ async function boot(){
         </div>
       </aside>
 
-      <main style="flex:1;min-width:0;">
+      <main class="app-main">
         <header class="app-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:10;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:10px;min-width:0;">
             <button onclick="window.__toggleSidebar()" class="btn btn-ghost btn-sm" style="display:none;" id="menu-btn">☰</button>
@@ -943,8 +1036,16 @@ async function boot(){
     const list = filteredProducts();
     return `
     <div class="card" style="padding:0;">
-      <div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;">
-        <input class="input" id="prod-search" placeholder="Buscar por nome, SKU ou categoria..." style="max-width:340px;" value="${escapeHtml(S.filters.prodSearch)}" />
+      <div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;">
+        <input class="input" id="prod-search" placeholder="Buscar por nome, SKU ou categoria..." style="max-width:340px;flex:1;min-width:180px;" value="${escapeHtml(S.filters.prodSearch)}" />
+        <select class="input" id="prod-sort" style="max-width:220px;">
+          <option value="name-asc" ${S.filters.prodSort==='name-asc'?'selected':''}>Nome (A-Z)</option>
+          <option value="name-desc" ${S.filters.prodSort==='name-desc'?'selected':''}>Nome (Z-A)</option>
+          <option value="category-asc" ${S.filters.prodSort==='category-asc'?'selected':''}>Categoria (A-Z)</option>
+          <option value="sku-asc" ${S.filters.prodSort==='sku-asc'?'selected':''}>SKU / Código</option>
+          <option value="stock-desc" ${S.filters.prodSort==='stock-desc'?'selected':''}>Estoque (maior primeiro)</option>
+          <option value="stock-asc" ${S.filters.prodSort==='stock-asc'?'selected':''}>Estoque (menor primeiro)</option>
+        </select>
       </div>
       ${list.length===0 ? emptyState('Nenhum produto encontrado', can('editProducts') ? 'Cadastre seu primeiro produto usando o botão "Novo produto".' : 'Ainda não há produtos cadastrados.', 'image') : `
       <div class="table-scroll"><table class="data-table" style="min-width:760px;">
@@ -1090,6 +1191,8 @@ async function boot(){
   function afterRenderHooks(){
     const search = document.getElementById('prod-search');
     if(search) search.addEventListener('input', (e)=>{ S.filters.prodSearch = e.target.value; renderShell(); document.getElementById('prod-search').focus(); document.getElementById('prod-search').setSelectionRange(9999,9999); });
+    const prodSort = document.getElementById('prod-sort');
+    if(prodSort) prodSort.addEventListener('change', (e)=>{ S.filters.prodSort = e.target.value; renderShell(); });
 
     const mt = document.getElementById('mov-type-filter');
     if(mt) mt.addEventListener('change', (e)=>{ S.filters.movType = e.target.value; renderShell(); });
